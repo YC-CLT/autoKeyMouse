@@ -27,6 +27,10 @@
 ## 经验/坑点
 
 - **单例进程计数**：用 `os.path.abspath(__file__)` + `result.stdout.count(script)` 精确匹配，比 PID 文件更可靠，无残留。`Where-Object { ProcessId -ne }` 在 PowerShell 管道中可能失效，不如 Python 侧 `count()` 简单
+- **`uv sync` 不装 dev 依赖**：`uv sync` 只装 `[project.dependencies]`，pytest 在 `[project.optional-dependencies] dev` 里，需 `uv sync --extra dev` 才能安装
+- **FFT NCC 积分图列偏移**：`integral[i+h, j+w]` 的列偏移是 `w`（模板宽度），不是 `1`。用 `1` 导致计算的是 h×1 区域而非 h×w 区域
+- **卡尔曼静态模型收敛**：静态目标模型 + 低过程噪声时，协方差快速收敛到接近零，Kalman Gain 极小，滤波器不再信任观测。测试需从真实值附近初始化，或增大过程噪声
+- **`time.time()` 单位是秒**：内部计算 `duration_ms = int((end - start) * 1000)`，测试 mock 时间值时注意单位
 
 ## 工作流
 
