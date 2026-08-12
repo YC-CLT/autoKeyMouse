@@ -278,7 +278,10 @@ class TestPosMatch:
                 event = player._script.events[0]
                 x, y = player._pos_match(event, mock_kalman, 1920, 1080)
                 mock_kalman.predict.assert_called_once()
-                mock_kalman.update.assert_called_once_with((955.0, 545.0))
+                mock_kalman.update.assert_called_once()
+                call_args = mock_kalman.update.call_args[0][0]
+                assert call_args[0] == 955.0
+                assert call_args[1] == 545.0
                 assert x == 955
                 assert y == 545
 

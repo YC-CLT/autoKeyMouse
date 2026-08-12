@@ -10,13 +10,11 @@ import win32clipboard
 from PIL import ImageGrab
 
 from config import (
-    KALMAN_MAX_CONSECUTIVE_MISS,
     MATCH_CONFIDENCE,
     MATCH_SEARCH_RADIUS,
-    STOP_HOTKEY,
 )
 from engine.hooks import HookManager
-from engine.kalman import KalmanFilter
+from engine.kalman import PositionKalman
 from engine.matcher import match_template
 from engine.script import Event, load
 
@@ -69,7 +67,7 @@ class Player:
     def _pos_match(
         self,
         event: Event,
-        kalman: Optional[KalmanFilter],
+        kalman: Optional[PositionKalman],
         screen_w: int,
         screen_h: int,
     ) -> tuple[int, int]:
@@ -94,7 +92,7 @@ class Player:
 
         if result is not None:
             (mx, my), _ = result
-            kalman.update((float(mx), float(my)))
+            kalman.update(np.array([mx, my], dtype=np.float64))
             return (mx, my)
         else:
             return (int(predicted[0]), int(predicted[1]))
@@ -107,15 +105,24 @@ class Player:
             return
 
         flags_map = {
-            "click": (win32con.MOUSEEVENTF_LEFTDOWN, win32con.MOUSEEVENTF_LEFTUP),
-            "rightclick": (win32con.MOUSEEVENTF_RIGHTDOWN, win32con.MOUSEEVENTF_RIGHTUP),
-            "middleclick": (win32con.MOUSEEVENTF_MIDDLEDOWN, win32con.MOUSEEVENTF_MIDDLEUP),
+            "left_down": (win32con.MOUSEEVENTF_LEFTDOWN,),
+            "left_up": (win32con.MOUSEEVENTF_LEFTUP,),
+            "right_down": (win32con.MOUSEEVENTF_RIGHTDOWN,),
+            "right_up": (win32con.MOUSEEVENTF_RIGHTUP,),
+            "middle_down": (win32con.MOUSEEVENTF_MIDDLEDOWN,),
+            "middle_up": (win32con.MOUSEEVENTF_MIDDLEUP,),
+            "wheel_up": (win32con.MOUSEEVENTF_WHEEL, 120),
+            "wheel_down": (win32con.MOUSEEVENTF_WHEEL, -120),
         }
 
         if action in flags_map:
-            down_flag, up_flag = flags_map[action]
-            win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            win32api.mouse_event(up_flag, 0, 0, 0, 0)
+            flags = flags_map[action]
+            if action in ("wheel_up", "wheel_down"):
+                flag, delta = flags
+                win32api.mouse_event(flag, 0, 0, delta, 0)
+            else:
+                flag = flags[0]
+                win32api.mouse_event(flag, 0, 0, 0, 0)
 
     def _execute_key_event(self, event: Event):
         if event.action == "down":
@@ -136,25 +143,15 @@ class Player:
             win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def _start_stop_listener(self):
-        self._hooks = HookManager()
+        self._hooks = HookManager(key_callback=lambda d: None)
         self._hooks.start()
 
     def _check_stop(self) -> bool:
         if self._hooks is None:
             return False
-        import queue
-
-        try:
-            while True:
-                hook_event = self._hooks.get_event(timeout=0)
-                msg_name = hook_event.MessageName.lower()
-                if "key" in msg_name and hook_event.KeyID is not None:
-                    key_name = hook_event.Key or ""
-                    if key_name.lower() == STOP_HOTKEY.lower():
-                        self._stop_flag = True
-                        return True
-        except queue.Empty:
-            pass
+        if self._hooks.stop_flag:
+            self._stop_flag = True
+            return True
         return False
 
     def _stop_listener(self):
@@ -179,14 +176,14 @@ class Player:
                     result.stopped_early = True
                     break
 
-                kalman = KalmanFilter() if self._use_match else None
-                if kalman is not None:
+                kalman = None
+                if self._use_match:
                     first_event = self._script.events[0]
                     if first_event.pos is not None:
                         init_x, init_y = self._rel_to_abs(
                             first_event.pos, screen_w, screen_h
                         )
-                        kalman.reset((float(init_x), float(init_y)))
+                        kalman = PositionKalman(float(init_x), float(init_y))
 
                 for event in self._script.events:
                     if self._stop_flag or self._check_stop():

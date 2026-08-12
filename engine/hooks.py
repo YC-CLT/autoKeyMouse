@@ -1,34 +1,70 @@
-import queue
 import threading
-from typing import Optional
+import time
+from typing import Callable, Optional
 
 import pyWinhook
 import pythoncom
 import win32api
 import win32con
 
+from config import STOP_HOTKEY
+
 
 class HookManager:
-    def __init__(self):
+    def __init__(
+        self,
+        key_callback: Callable[[dict], None],
+        mouse_callback: Optional[Callable[[dict], None]] = None,
+    ):
         self._hm = pyWinhook.HookManager()
-        self._event_queue: queue.Queue = queue.Queue()
+        self._key_callback = key_callback
+        self._mouse_callback = mouse_callback
+        self._stop_flag = False
         self._running = False
         self._thread: Optional[threading.Thread] = None
 
-    def _keyboard_callback(self, event):
-        self._event_queue.put(event)
+    def _on_keyboard(self, event):
+        action = "down" if "down" in event.MessageName.lower() else "up"
+        key_name = event.Key or ""
+        if key_name.lower() == STOP_HOTKEY.lower():
+            self._stop_flag = True
+        self._key_callback({
+            "key": key_name,
+            "keycode": event.KeyID,
+            "action": action,
+            "timestamp": time.time(),
+        })
         return True
 
-    def _mouse_callback(self, event):
-        self._event_queue.put(event)
+    def _on_mouse(self, event):
+        if self._mouse_callback is None:
+            return True
+        msg_name = event.MessageName.lower()
+        if "right" in msg_name:
+            action = "right_down" if "down" in msg_name else "right_up"
+        elif "middle" in msg_name:
+            action = "middle_down" if "down" in msg_name else "middle_up"
+        elif "move" in msg_name:
+            action = "move"
+        elif "wheel" in msg_name:
+            action = "wheel_up" if event.Wheel > 0 else "wheel_down"
+        else:
+            action = "left_down" if "down" in msg_name else "left_up"
+        self._mouse_callback({
+            "action": action,
+            "pos": list(event.Position),
+            "wheel": getattr(event, "Wheel", 0),
+            "timestamp": time.time(),
+        })
         return True
 
     def _run(self):
-        self._hm.KeyDown = self._keyboard_callback
-        self._hm.KeyUp = self._keyboard_callback
-        self._hm.MouseAllButtonsDown = self._mouse_callback
-        self._hm.MouseAllButtonsUp = self._mouse_callback
-        self._hm.MouseMove = self._mouse_callback
+        self._hm.KeyDown = self._on_keyboard
+        self._hm.KeyUp = self._on_keyboard
+        self._hm.MouseAllButtonsDown = self._on_mouse
+        self._hm.MouseAllButtonsUp = self._on_mouse
+        self._hm.MouseMove = self._on_mouse
+        self._hm.MouseWheel = self._on_mouse
 
         self._hm.HookKeyboard()
         self._hm.HookMouse()
@@ -37,6 +73,7 @@ class HookManager:
         pythoncom.PumpMessages()
 
     def start(self):
+        self._stop_flag = False
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -46,13 +83,10 @@ class HookManager:
             win32api.PostThreadMessage(self._thread.ident, win32con.WM_QUIT, 0, 0)
             self._thread.join(timeout=2.0)
 
-    def get_event(self, timeout: Optional[float] = None):
-        return self._event_queue.get(timeout=timeout)
-
-    @property
-    def event_queue(self) -> queue.Queue:
-        return self._event_queue
-
     @property
     def is_running(self) -> bool:
         return self._running
+
+    @property
+    def stop_flag(self) -> bool:
+        return self._stop_flag

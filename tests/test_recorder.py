@@ -1,9 +1,9 @@
-import json
 import os
 import tempfile
 from unittest.mock import MagicMock, patch
 
 from engine.recorder import Recorder
+from engine.script import Event
 
 
 class TestRecorder:
@@ -15,112 +15,95 @@ class TestRecorder:
             assert os.path.isdir(output_dir)
             assert os.path.isdir(os.path.join(output_dir, "shots"))
 
-    def test_build_key_event(self):
+    def test_relative_pos(self):
         recorder = Recorder("/tmp/test")
-        mock_hook_event = MagicMock()
-        mock_hook_event.MessageName = "key down"
-        mock_hook_event.Key = "A"
-        mock_hook_event.KeyID = 65
-        mock_hook_event.Ascii = 97
+        rx, ry = recorder._relative_pos(960.0, 540.0, 1920, 1080)
+        assert rx == 0.5
+        assert ry == 0.5
 
-        event = recorder._build_key_event(mock_hook_event, delay_ms=50)
+    def test_relative_pos_top_left(self):
+        recorder = Recorder("/tmp/test")
+        rx, ry = recorder._relative_pos(0.0, 0.0, 1920, 1080)
+        assert rx == 0.0
+        assert ry == 0.0
+
+    def test_relative_pos_bottom_right(self):
+        recorder = Recorder("/tmp/test")
+        rx, ry = recorder._relative_pos(1920.0, 1080.0, 1920, 1080)
+        assert rx == 1.0
+        assert ry == 1.0
+
+    def test_map_mouse_action_left_down(self):
+        recorder = Recorder("/tmp/test")
+        assert recorder._map_mouse_action("mouse left down") == "left_down"
+        assert recorder._map_mouse_action("mouse left up") == "left_up"
+
+    def test_map_mouse_action_right_down(self):
+        recorder = Recorder("/tmp/test")
+        assert recorder._map_mouse_action("mouse right down") == "right_down"
+        assert recorder._map_mouse_action("mouse right up") == "right_up"
+
+    def test_map_mouse_action_middle_down(self):
+        recorder = Recorder("/tmp/test")
+        assert recorder._map_mouse_action("mouse middle down") == "middle_down"
+        assert recorder._map_mouse_action("mouse middle up") == "middle_up"
+
+    def test_map_mouse_action_unknown(self):
+        recorder = Recorder("/tmp/test")
+        assert recorder._map_mouse_action("something else") is None
+
+    def test_is_recording_initially_false(self):
+        recorder = Recorder("/tmp/test")
+        assert recorder.is_recording() is False
+
+    def test_on_key_callback_creates_event(self):
+        recorder = Recorder("/tmp/test")
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.0
+        recorder._on_key_callback({
+            "key": "A",
+            "keycode": 65,
+            "action": "down",
+            "timestamp": 1001.0,
+        })
+        assert len(recorder._events) == 1
+        event = recorder._events[0]
         assert event.type == "key"
         assert event.action == "down"
         assert event.key == "A"
         assert event.keycode == 65
-        assert event.delay_ms == 50
 
-    def test_build_key_up_event(self):
+    def test_on_mouse_callback_creates_event(self):
         recorder = Recorder("/tmp/test")
-        mock_hook_event = MagicMock()
-        mock_hook_event.MessageName = "key up"
-        mock_hook_event.Key = "Shift"
-        mock_hook_event.KeyID = 160
-        mock_hook_event.Ascii = 0
-
-        event = recorder._build_key_event(mock_hook_event, delay_ms=100)
-        assert event.type == "key"
-        assert event.action == "up"
-        assert event.key == "Shift"
-        assert event.keycode == 160
-        assert event.delay_ms == 100
-
-    def test_build_mouse_click_event(self):
-        recorder = Recorder("/tmp/test")
-        recorder._shot_index = 2
-        mock_hook_event = MagicMock()
-        mock_hook_event.MessageName = "mouse left down"
-        mock_hook_event.Position = (100, 200)
-
-        with patch.object(recorder, "_last_shot", None):
-            event = recorder._build_mouse_event(mock_hook_event, delay_ms=30)
-            assert event.type == "mouse"
-            assert event.action == "click"
-            assert event.pos == [100, 200]
-            assert event.delay_ms == 30
-            assert event.shot is not None
-
-    def test_build_mouse_right_click_event(self):
-        recorder = Recorder("/tmp/test")
-        mock_hook_event = MagicMock()
-        mock_hook_event.MessageName = "mouse right down"
-        mock_hook_event.Position = (300, 400)
-
-        with patch.object(recorder, "_last_shot", None):
-            event = recorder._build_mouse_event(mock_hook_event, delay_ms=20)
-            assert event.type == "mouse"
-            assert event.action == "rightclick"
-            assert event.pos == [300, 400]
-            assert event.delay_ms == 20
-
-    def test_shot_index_increments(self):
-        recorder = Recorder("/tmp/test")
-        assert recorder._shot_index == 0
-        mock_hook_event = MagicMock()
-        mock_hook_event.MessageName = "mouse left down"
-        mock_hook_event.Position = (100, 200)
-
-        with patch.object(recorder, "_last_shot", None):
-            recorder._build_mouse_event(mock_hook_event, delay_ms=10)
-            assert recorder._shot_index == 1
-            recorder._build_mouse_event(mock_hook_event, delay_ms=10)
-            assert recorder._shot_index == 2
-
-    def test_build_script_metadata(self):
-        recorder = Recorder("/tmp/test")
-        recorder._events = []
+        recorder._screen_w = 1920
+        recorder._screen_h = 1080
         recorder._start_time = 1000.0
-        recorder._last_event_time = 1004.0
-
-        script = recorder._build_script()
-        assert script.version == 1
-        assert abs(script.meta.duration_ms - 4000) <= 1
-        assert script.meta.event_count == 0
-
-    def test_script_includes_events(self):
-        recorder = Recorder("/tmp/test")
-        from engine.script import Event
-
-        recorder._events = [
-            Event(type="key", action="down", delay_ms=10, key="A", keycode=65),
-            Event(type="key", action="up", delay_ms=20, key="A", keycode=65),
-        ]
-        recorder._start_time = 1000.0
-        recorder._last_event_time = 1000.03
-
-        script = recorder._build_script()
-        assert script.meta.event_count == 2
-        assert len(script.events) == 2
-        assert abs(script.meta.duration_ms - 30) <= 1
+        recorder._last_event_time = 1000.0
+        recorder._on_mouse_callback({
+            "action": "left_down",
+            "pos": [960, 540],
+            "wheel": 0,
+            "timestamp": 1001.0,
+        })
+        assert len(recorder._events) == 1
+        event = recorder._events[0]
+        assert event.type == "mouse"
+        assert event.action == "left_down"
+        assert event.pos == [0.5, 0.5]
 
     def test_no_shot_skips_capture(self):
         recorder = Recorder("/tmp/test", no_shot=True)
-        mock_hook_event = MagicMock()
-        mock_hook_event.MessageName = "mouse left down"
-        mock_hook_event.Position = (100, 200)
-
-        event = recorder._build_mouse_event(mock_hook_event, delay_ms=10)
-        assert event.type == "mouse"
+        recorder._screen_w = 1920
+        recorder._screen_h = 1080
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.0
+        recorder._on_mouse_callback({
+            "action": "left_down",
+            "pos": [100, 200],
+            "wheel": 0,
+            "timestamp": 1001.0,
+        })
+        event = recorder._events[0]
         assert event.shot is None
 
     def test_record_move_defaults_false(self):
@@ -139,12 +122,32 @@ class TestRecorder:
         recorder = Recorder("/tmp/test", move_interval=500)
         assert recorder._move_interval == 500
 
-    def test_no_shot_still_increments_index(self):
-        recorder = Recorder("/tmp/test", no_shot=True)
-        assert recorder._shot_index == 0
-        mock_hook_event = MagicMock()
-        mock_hook_event.MessageName = "mouse left down"
-        mock_hook_event.Position = (100, 200)
+    def test_build_script_metadata(self):
+        recorder = Recorder("/tmp/test")
+        recorder._screen_w = 1920
+        recorder._screen_h = 1080
+        recorder._events = []
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1004.0
 
-        recorder._build_mouse_event(mock_hook_event, delay_ms=10)
-        assert recorder._shot_index == 1
+        script = recorder._build_script()
+        assert script.version == 1
+        assert script.meta.screen == [1920, 1080]
+        assert abs(script.meta.duration_ms - 4000) <= 1
+        assert script.meta.event_count == 0
+
+    def test_script_includes_events(self):
+        recorder = Recorder("/tmp/test")
+        recorder._screen_w = 1920
+        recorder._screen_h = 1080
+        recorder._events = [
+            Event(type="key", action="down", delay_ms=10, key="A", keycode=65),
+            Event(type="key", action="up", delay_ms=20, key="A", keycode=65),
+        ]
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.03
+
+        script = recorder._build_script()
+        assert script.meta.event_count == 2
+        assert len(script.events) == 2
+        assert abs(script.meta.duration_ms - 30) <= 1
