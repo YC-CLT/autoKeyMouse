@@ -16,3 +16,27 @@
 
 ### 修复
 - matcher 积分图列偏移 bug: `1:1+valid_cols` → `w:w+valid_cols`
+
+## 2026-08-13 — 2号机：回放器 + CLI + TUI (Task 9~11)
+
+### 新增
+- **engine/player.py**: Player 回放器 + PlayerResult 数据类
+  - 模板匹配+卡尔曼定位管线 (`_pos_match`)
+  - win32api 鼠标/键盘/文本模拟 (`_execute_mouse_event`, `_execute_key_event`, `_execute_text_event`)
+  - F9 热键停止监听 (`_start_stop_listener` / `_check_stop`)
+  - 速度控制 (`_calc_delay`: delay_ms/speed, 最小 1ms)
+  - 相对坐标→绝对坐标转换 (`_rel_to_abs`)
+- **cli/commands.py**: 5 个子命令处理器 (record/play/list/inspect/tui)
+- **cli/display.py**: Rich 格式化输出 (表格/面板/进度条)
+- **main.py**: argparse 入口, 子命令分发
+- **tui/app.py**: Rich 交互菜单界面 (录制/回放/列表/检查)
+
+### 测试
+- 30 tests passed (player 19 + cli 11), 全量 100 tests
+
+### 实现细节
+- Player 回放循环: for cycle → for event → sleep(delay) → check F9 → execute
+- 坐标匹配: 卡尔曼 predict → 模板匹配 → 更新(成功) or 预测值(失败)
+- 鼠标事件: SetCursorPos + mouse_event (down/up 配对)
+- 文本事件: 剪贴板 OpenClipboard → SetClipboardText → Ctrl+V
+- 速度 clamp: 最小 0.01, 防止除零
