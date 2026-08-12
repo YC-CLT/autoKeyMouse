@@ -28,6 +28,17 @@
 ### 测试
 - 106 tests passed (recorder 新增 6 tests)
 
+## 2026-08-13 — 1号机：对齐设计文档偏差修复
+
+### 修复
+- **Task 6 kalman**: `KalmanFilter` → `PositionKalman`, `__init__(x,y)` 替代 `reset()`, `predict()/update()` → `np.ndarray`, 新增 `is_stale()`
+- **Task 7 hooks**: 从队列模式改为回调模式 (`__init__(key_callback, mouse_callback)`), 规范化回调 dict, F9 检测 + stop_flag
+- **Task 8 recorder**: `start()` 获取屏幕尺寸, 新增 `is_recording()`, `_relative_pos()`, `_map_mouse_action()`, 位置改为相对坐标 [0~1]
+- **Task 9 player**: 移除 `STOP_HOTKEY` 死代码, 适配新 kalman/hooks API, 鼠标事件执行改为 `left_down/left_up` 等独立动作
+
+### 测试
+- 111 tests passed
+
 ## 2026-08-13 — 2号机：回放器 + CLI + TUI (Task 9~11)
 
 ### 新增
