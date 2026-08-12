@@ -112,3 +112,39 @@ class TestRecorder:
         assert script.meta.event_count == 2
         assert len(script.events) == 2
         assert abs(script.meta.duration_ms - 30) <= 1
+
+    def test_no_shot_skips_capture(self):
+        recorder = Recorder("/tmp/test", no_shot=True)
+        mock_hook_event = MagicMock()
+        mock_hook_event.MessageName = "mouse left down"
+        mock_hook_event.Position = (100, 200)
+
+        event = recorder._build_mouse_event(mock_hook_event, delay_ms=10)
+        assert event.type == "mouse"
+        assert event.shot is None
+
+    def test_record_move_defaults_false(self):
+        recorder = Recorder("/tmp/test")
+        assert recorder._record_move is False
+
+    def test_record_move_true(self):
+        recorder = Recorder("/tmp/test", record_move=True)
+        assert recorder._record_move is True
+
+    def test_custom_shot_radius(self):
+        recorder = Recorder("/tmp/test", shot_radius=80)
+        assert recorder._shot_radius == 80
+
+    def test_custom_move_interval(self):
+        recorder = Recorder("/tmp/test", move_interval=500)
+        assert recorder._move_interval == 500
+
+    def test_no_shot_still_increments_index(self):
+        recorder = Recorder("/tmp/test", no_shot=True)
+        assert recorder._shot_index == 0
+        mock_hook_event = MagicMock()
+        mock_hook_event.MessageName = "mouse left down"
+        mock_hook_event.Position = (100, 200)
+
+        recorder._build_mouse_event(mock_hook_event, delay_ms=10)
+        assert recorder._shot_index == 1

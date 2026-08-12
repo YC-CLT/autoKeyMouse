@@ -74,7 +74,13 @@ def _default_output_dir() -> str:
 def handle_record(args) -> int:
     output_dir = args.output or _default_output_dir()
 
-    recorder = Recorder(output_dir=output_dir)
+    recorder = Recorder(
+        output_dir=output_dir,
+        record_move=args.record_move,
+        move_interval=args.move_interval,
+        shot_radius=args.shot_radius,
+        no_shot=args.no_shot,
+    )
 
     print_recording_start()
     recorder.start()

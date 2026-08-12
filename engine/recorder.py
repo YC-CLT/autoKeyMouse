@@ -11,7 +11,14 @@ from engine.script import Event, Meta, Script
 
 
 class Recorder:
-    def __init__(self, output_dir: str):
+    def __init__(
+        self,
+        output_dir: str,
+        record_move: bool = False,
+        move_interval: int = MOUSE_MOVE_INTERVAL_MS,
+        shot_radius: int = SHOT_RADIUS,
+        no_shot: bool = False,
+    ):
         self._hooks = HookManager()
         self._output_dir = output_dir
         self._events: list[Event] = []
@@ -22,6 +29,10 @@ class Recorder:
         self._thread: Optional[threading.Thread] = None
         self._last_shot: Optional[str] = None
         self._last_mouse_move_time = 0.0
+        self._record_move = record_move
+        self._move_interval = move_interval
+        self._shot_radius = shot_radius
+        self._no_shot = no_shot
 
     def _build_output_dir(self):
         os.makedirs(self._output_dir, exist_ok=True)
@@ -47,7 +58,10 @@ class Recorder:
             action = "click"
 
         pos = list(hook_event.Position)
-        shot = capture(pos, SHOT_RADIUS, self._output_dir, self._shot_index)
+        if self._no_shot:
+            shot = None
+        else:
+            shot = capture(pos, self._shot_radius, self._output_dir, self._shot_index)
         self._shot_index += 1
 
         return Event(
@@ -81,7 +95,9 @@ class Recorder:
 
             if "mouse" in msg_name:
                 if "move" in msg_name:
-                    if now - self._last_mouse_move_time < MOUSE_MOVE_INTERVAL_MS / 1000.0:
+                    if not self._record_move:
+                        continue
+                    if now - self._last_mouse_move_time < self._move_interval / 1000.0:
                         continue
                     self._last_mouse_move_time = now
                     event = self._build_mouse_move_event(hook_event, delay_ms)
