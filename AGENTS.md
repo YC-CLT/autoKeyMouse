@@ -4,6 +4,7 @@
 
 - Python 3.11，uv 管理依赖
 - config.py 集中配置所有常量，pyproject.toml 管理依赖
+- **命令执行**：统一走 `cmd-exec-mcp`（按需local/sandbox/remote）
 
 ## 关键文件
 
