@@ -17,6 +17,17 @@
 ### 修复
 - matcher 积分图列偏移 bug: `1:1+valid_cols` → `w:w+valid_cols`
 
+## 2026-08-13 — 1号机：Recorder 参数接入
+
+### 新增
+- **Recorder** 接入 `--record-move` / `--move-interval` / `--shot-radius` / `--no-shot` 参数
+- `no_shot=True` 时跳过截图，`shot` 字段为 `None`
+- `record_move=False`（默认）时丢弃鼠标移动事件
+- `_shot_radius` / `_move_interval` 覆盖 config 默认值
+
+### 测试
+- 106 tests passed (recorder 新增 6 tests)
+
 ## 2026-08-13 — 2号机：回放器 + CLI + TUI (Task 9~11)
 
 ### 新增
