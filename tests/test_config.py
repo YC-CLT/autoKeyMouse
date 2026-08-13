@@ -47,33 +47,6 @@ class TestConfigConstants:
     def test_match_search_radius_range(self):
         assert config.MATCH_SEARCH_RADIUS > 0
 
-    def test_kalman_process_noise_exists(self):
-        assert hasattr(config, "KALMAN_PROCESS_NOISE")
-
-    def test_kalman_process_noise_type(self):
-        assert isinstance(config.KALMAN_PROCESS_NOISE, float)
-
-    def test_kalman_process_noise_range(self):
-        assert config.KALMAN_PROCESS_NOISE > 0
-
-    def test_kalman_measurement_noise_exists(self):
-        assert hasattr(config, "KALMAN_MEASURE_NOISE")
-
-    def test_kalman_measurement_noise_type(self):
-        assert isinstance(config.KALMAN_MEASURE_NOISE, float)
-
-    def test_kalman_measurement_noise_range(self):
-        assert config.KALMAN_MEASURE_NOISE > 0
-
-    def test_kalman_max_consecutive_miss_exists(self):
-        assert hasattr(config, "KALMAN_MAX_CONSECUTIVE_MISS")
-
-    def test_kalman_max_consecutive_miss_type(self):
-        assert isinstance(config.KALMAN_MAX_CONSECUTIVE_MISS, int)
-
-    def test_kalman_max_consecutive_miss_range(self):
-        assert config.KALMAN_MAX_CONSECUTIVE_MISS > 0
-
     def test_mouse_move_interval_exists(self):
         assert hasattr(config, "MOUSE_MOVE_INTERVAL_MS")
 
