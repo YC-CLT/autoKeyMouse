@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 2026-08-13 — 日志系统
+
+### 新增
+
+- **engine/logger.py**: 日志核心模块
+  - `setup_logging(level)` — 初始化日志系统，TimedRotatingFileHandler 按天轮转，30 天保留
+  - `get_logger(name)` — 获取 `autokeymouse.<name>` 命名空间的 logger
+  - 日志只输出到 `logs/autokeymouse.log`，不打印到终端
+  - 格式：`2026-08-13 14:30:01 [INFO] engine.player: ...`
+  - `setup_logging()` 幂等，重复调用不创建重复 handler
+- **main.py**: `--debug` 全局标志，切换到 DEBUG 级别
+- **所有模块** 添加 INFO/DEBUG/WARNING/ERROR 级别日志
+
+### 日志覆盖
+
+| 模块 | 日志要点 |
+|------|---------|
+| engine/hooks.py | 钩子启动、键盘/鼠标事件 DEBUG、启动失败 ERROR |
+| engine/recorder.py | 录制开始/停止、鼠标移动节流、截图失败 |
+| engine/player.py | 回放开始/完成、周期进度、事件执行、模板匹配结果、执行异常 |
+| engine/matcher.py | ROI 过小 WARNING、置信度低于阈值 DEBUG |
+| cli/commands.py | 命令入口（record/play/list/inspect） |
+| tui/app.py | TUI 录制/回放入口 |
+
+### 测试
+
+- 117 tests passed (原有 111 + 新增 6)
+
+---
+
 ## 2026-08-13 — 录制回放 Bug 修复
 
 ### 修复
