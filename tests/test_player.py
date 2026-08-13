@@ -1,7 +1,7 @@
 import json
 import os
 import tempfile
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -229,7 +229,7 @@ class TestPosMatch:
             self._make_script_dir(tmpdir)
             player = Player(tmpdir, use_match=False)
             event = player._script.events[0]
-            x, y = player._pos_match(event, None, 1920, 1080)
+            x, y = player._pos_match(event, 1920, 1080)
             assert x == 960
             assert y == 540
 
@@ -247,11 +247,12 @@ class TestPosMatch:
             self._make_script_dir(tmpdir, events)
             player = Player(tmpdir, use_match=True)
             event = player._script.events[0]
-            x, y = player._pos_match(event, None, 1920, 1080)
+            x, y = player._pos_match(event, 1920, 1080)
             assert x == 960
             assert y == 540
 
-    def test_pos_match_with_kalman_and_mock_matcher(self):
+    def test_pos_match_direct_hit_at_offset(self):
+        """尝试 1: 在 offset+原始坐标直接命中"""
         with tempfile.TemporaryDirectory() as tmpdir:
             events = [
                 {
@@ -264,28 +265,59 @@ class TestPosMatch:
             ]
             self._make_script_dir(tmpdir, events)
             player = Player(tmpdir, use_match=True)
-
-            mock_kalman = MagicMock()
-            mock_kalman.predict.return_value = (950.0, 540.0)
-            type(mock_kalman).position = PropertyMock(return_value=(955.0, 545.0))
+            player._offset = (10, -5)
 
             dummy_shot = np.zeros((50, 50), dtype=np.float64)
             dummy_screen = np.zeros((200, 200), dtype=np.float64)
 
             with patch.object(player, "_load_shot", return_value=dummy_shot), \
                  patch.object(player, "_capture_screen", return_value=dummy_screen), \
-                 patch("engine.player.match_template", return_value=((955, 545), 0.95)):
+                 patch("engine.player.match_template", return_value=((975, 535), 0.95)):
                 event = player._script.events[0]
-                x, y = player._pos_match(event, mock_kalman, 1920, 1080)
-                mock_kalman.predict.assert_called_once()
-                mock_kalman.update.assert_called_once()
-                call_args = mock_kalman.update.call_args[0][0]
-                assert call_args[0] == 955.0
-                assert call_args[1] == 545.0
-                assert x == 955
-                assert y == 545
+                x, y = player._pos_match(event, 1920, 1080)
+                assert x == 975
+                assert y == 535
+                assert player._offset == (975 - 960, 535 - 540)
 
-    def test_pos_match_fallback_to_kalman_on_match_failure(self):
+    def test_pos_match_fallback_to_original(self):
+        """尝试 1 失败，尝试 2 在原始坐标命中"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            events = [
+                {
+                    "type": "mouse",
+                    "action": "click",
+                    "delay_ms": 10,
+                    "pos": [0.5, 0.5],
+                    "shot": "shots/0001.png",
+                }
+            ]
+            self._make_script_dir(tmpdir, events)
+            player = Player(tmpdir, use_match=True)
+            player._offset = (100, 100)  # 过时的 offset
+
+            dummy_shot = np.zeros((50, 50), dtype=np.float64)
+            dummy_screen = np.zeros((200, 200), dtype=np.float64)
+
+            call_count = [0]
+
+            def mock_match(screen, tpl, pos, radius, conf):
+                call_count[0] += 1
+                if call_count[0] == 1:
+                    return None  # 尝试 1 失败
+                return ((960, 540), 0.90)  # 尝试 2 命中
+
+            with patch.object(player, "_load_shot", return_value=dummy_shot), \
+                 patch.object(player, "_capture_screen", return_value=dummy_screen), \
+                 patch("engine.player.match_template", side_effect=mock_match):
+                event = player._script.events[0]
+                x, y = player._pos_match(event, 1920, 1080)
+                assert x == 960
+                assert y == 540
+                assert player._offset == (0, 0)
+                assert call_count[0] == 2
+
+    def test_pos_match_fullscreen_fallback(self):
+        """尝试 1、2 失败，尝试 3 全屏命中"""
         with tempfile.TemporaryDirectory() as tmpdir:
             events = [
                 {
@@ -299,8 +331,42 @@ class TestPosMatch:
             self._make_script_dir(tmpdir, events)
             player = Player(tmpdir, use_match=True)
 
-            mock_kalman = MagicMock()
-            mock_kalman.predict.return_value = (950.0, 540.0)
+            dummy_shot = np.zeros((50, 50), dtype=np.float64)
+            dummy_screen = np.zeros((200, 200), dtype=np.float64)
+
+            call_count = [0]
+
+            def mock_match(screen, tpl, pos, radius, conf):
+                call_count[0] += 1
+                if call_count[0] <= 2:
+                    return None  # 尝试 1、2 失败
+                return ((1200, 600), 0.88)  # 尝试 3 命中
+
+            with patch.object(player, "_load_shot", return_value=dummy_shot), \
+                 patch.object(player, "_capture_screen", return_value=dummy_screen), \
+                 patch("engine.player.match_template", side_effect=mock_match):
+                event = player._script.events[0]
+                x, y = player._pos_match(event, 1920, 1080)
+                assert x == 1200
+                assert y == 600
+                assert player._offset == (1200 - 960, 600 - 540)
+                assert call_count[0] == 3
+
+    def test_pos_match_all_fail_fallback(self):
+        """三档全失败，兜底返回原始坐标+offset"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            events = [
+                {
+                    "type": "mouse",
+                    "action": "click",
+                    "delay_ms": 10,
+                    "pos": [0.5, 0.5],
+                    "shot": "shots/0001.png",
+                }
+            ]
+            self._make_script_dir(tmpdir, events)
+            player = Player(tmpdir, use_match=True)
+            player._offset = (5, 5)
 
             dummy_shot = np.zeros((50, 50), dtype=np.float64)
             dummy_screen = np.zeros((200, 200), dtype=np.float64)
@@ -309,8 +375,77 @@ class TestPosMatch:
                  patch.object(player, "_capture_screen", return_value=dummy_screen), \
                  patch("engine.player.match_template", return_value=None):
                 event = player._script.events[0]
-                x, y = player._pos_match(event, mock_kalman, 1920, 1080)
-                mock_kalman.predict.assert_called_once()
-                mock_kalman.update.assert_not_called()
-                assert x == 950
-                assert y == 540
+                x, y = player._pos_match(event, 1920, 1080)
+                assert x == 965   # 960 + 5
+                assert y == 545   # 540 + 5
+                assert player._offset == (5, 5)  # offset 不变
+
+    def test_pos_match_no_shot_uses_offset(self):
+        """无 shot 事件：返回原始坐标 + offset"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            events = [
+                {
+                    "type": "mouse",
+                    "action": "move",
+                    "delay_ms": 10,
+                    "pos": [0.4, 0.6],
+                    "shot": None,
+                }
+            ]
+            self._make_script_dir(tmpdir, events)
+            player = Player(tmpdir, use_match=True)
+            player._offset = (20, -10)
+
+            event = player._script.events[0]
+            x, y = player._pos_match(event, 1920, 1080)
+            assert x == 768 + 20  # 0.4*1920 + 20
+            assert y == 648 - 10  # 0.6*1080 - 10
+
+    def test_pos_match_use_match_false(self):
+        """use_match=False: 返回原始坐标 + offset，不搜图"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            events = [
+                {
+                    "type": "mouse",
+                    "action": "click",
+                    "delay_ms": 10,
+                    "pos": [0.5, 0.5],
+                    "shot": "shots/0001.png",
+                }
+            ]
+            self._make_script_dir(tmpdir, events)
+            player = Player(tmpdir, use_match=False)
+            player._offset = (10, 10)
+
+            event = player._script.events[0]
+            x, y = player._pos_match(event, 1920, 1080)
+            assert x == 970
+            assert y == 550
+
+    def test_offset_reset_per_cycle(self):
+        """每个循环开始时 offset 重置为 (0,0)"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            events = [
+                {
+                    "type": "key",
+                    "action": "down",
+                    "delay_ms": 10,
+                    "key": "a",
+                    "keycode": 65,
+                }
+            ]
+            self._make_script_dir(tmpdir, events)
+            player = Player(tmpdir, use_match=False)
+            player._offset = (999, 999)
+
+            stop_calls = [0]
+
+            def mock_check_stop():
+                stop_calls[0] += 1
+                return stop_calls[0] > 1  # 第一次 False 进入循环，第二次 True 退出
+
+            with patch.object(player, "_start_stop_listener"), \
+                 patch.object(player, "_stop_listener"), \
+                 patch.object(player, "_check_stop", side_effect=mock_check_stop):
+                result = player.play()
+                assert player._offset == (0, 0)
