@@ -1,5 +1,6 @@
 import argparse
 import ctypes
+import logging
 import sys
 
 from cli.commands import (
@@ -13,16 +14,21 @@ from engine.logger import setup_logging
 
 
 def main() -> None:
-    setup_logging()
     ctypes.windll.user32.SetProcessDPIAware()
     parser = argparse.ArgumentParser(
         prog="autokeymouse",
         description="Keyboard/mouse recording and playback tool for Windows",
     )
+    parser.add_argument(
+        "--debug", action="store_true", default=False,
+        help="Enable debug logging",
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     register_commands(subparsers)
 
     args = parser.parse_args()
+
+    setup_logging(level=logging.DEBUG if args.debug else logging.INFO)
 
     if args.command is None:
         parser.print_help()
