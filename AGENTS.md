@@ -21,6 +21,12 @@
 | `cli/commands.py` | 5 个子命令处理 (record/play/list/inspect/tui) |
 | `tui/app.py` | Rich Live 交互菜单 |
 
+## 参考文档
+
+| 文件 | 内容 |
+|------|------|
+| `docs/2026-08-13-KeymouseGo-research.md` | KeymouseGo 参考项目调研（架构、脚本系统、回放引擎、插件系统） |
+
 ## 关键常量
 
 所有常量在 `config.py`，修改后全量 grep 同步引用。
