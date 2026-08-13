@@ -58,6 +58,9 @@
 - **`time.time()` 单位是秒**：内部计算 `duration_ms = int((end - start) * 1000)`，测试 mock 时间值时注意单位
 - **实现前必须对照设计文档**：类名、方法签名、参数类型、返回值类型必须与设计文档一致，否则后续环节（如 player 依赖 kalman）会连锁报错
 - **`_pos_match` 多路径测试需 mock 多个内部方法**：`_pos_match` 有多个 fallback 路径（shot 文件不存在→原始坐标、匹配失败→卡尔曼预测值），测试匹配成功/失败路径时需同时 mock `_load_shot` 和 `_capture_screen`，否则静默走 fallback
+- **Pillow 私有 API 会随版本移除**：`ImageGrab._grayscale_from_argb` 在 Pillow 12.3.0 被移除，改用 `Image.convert("L")`。依赖私有 API 时必须在 CI 中锁定版本上限
+- **停止热键会自爆**：录制时 F9 停止热键的 keydown/keyup 被写入脚本，回放时模拟 F9 会触发 player 自身 hook 的 stop_flag，导致回放立即中止。录制端必须过滤停止热键，不要写入脚本
+- **Windows DPI 缩放导致坐标偏移**：高 DPI 下 `ImageGrab.grab()` 返回虚拟化尺寸，但 `SetCursorPos` 用物理像素，坐标换算错位。入口处调用 `SetProcessDPIAware()` 强制物理像素坐标系
 
 ## 工作流
 

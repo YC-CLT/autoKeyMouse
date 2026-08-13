@@ -5,7 +5,7 @@ from typing import Optional
 
 from PIL import ImageGrab
 
-from config import MOUSE_MOVE_INTERVAL_MS, SHOT_RADIUS
+from config import MOUSE_MOVE_INTERVAL_MS, SHOT_RADIUS, STOP_HOTKEY
 from engine.capture import capture
 from engine.hooks import HookManager
 from engine.script import Event, Meta, Script
@@ -56,6 +56,8 @@ class Recorder:
         return None
 
     def _on_key_callback(self, data: dict):
+        if data["key"].lower() == STOP_HOTKEY.lower():
+            return
         now = time.time()
         delay_ms = int((now - self._last_event_time) * 1000)
         self._last_event_time = now
@@ -100,11 +102,11 @@ class Recorder:
                 pos=rel_pos,
             )
         else:
-            if self._no_shot:
+            if self._no_shot or "up" in action:
                 shot = None
             else:
                 shot = capture(pos, self._shot_radius, self._output_dir, self._shot_index)
-            self._shot_index += 1
+                self._shot_index += 1
             event = Event(
                 type="mouse",
                 action=action,

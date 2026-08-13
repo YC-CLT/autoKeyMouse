@@ -7,7 +7,7 @@ import numpy as np
 import win32api
 import win32con
 import win32clipboard
-from PIL import ImageGrab
+from PIL import Image, ImageGrab
 
 from config import (
     MATCH_CONFIDENCE,
@@ -54,15 +54,11 @@ class Player:
         full_path = os.path.join(self._script_dir, shot_path)
         if not os.path.exists(full_path):
             return None
-        img = ImageGrab._grayscale_from_argb(
-            (0, 0, 0, 0), ImageGrab._load_image(full_path)
-        )
-        return np.array(img, dtype=np.float64)
+        return np.array(Image.open(full_path).convert("L"), dtype=np.float64)
 
     def _capture_screen(self) -> np.ndarray:
         screen = ImageGrab.grab()
-        gray = ImageGrab._grayscale_from_argb((0, 0, 0, 0), screen)
-        return np.array(gray, dtype=np.float64)
+        return np.array(screen.convert("L"), dtype=np.float64)
 
     def _pos_match(
         self,

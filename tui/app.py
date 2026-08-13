@@ -1,3 +1,4 @@
+import msvcrt
 import os
 import time
 from datetime import datetime
@@ -18,7 +19,7 @@ from cli.display import (
 )
 from engine.player import Player
 from engine.recorder import Recorder
-from engine.script import load
+from engine.script import load, save
 
 console = Console()
 
@@ -65,10 +66,19 @@ def _tui_record() -> None:
     recorder = Recorder(output_dir=output_dir, shot_radius=shot_radius)
 
     print_recording_start()
+    console.print("[dim]Press Enter or F9 to stop recording...[/dim]")
     recorder.start()
 
-    input("Press Enter to stop recording...")
+    while True:
+        if recorder._hooks is not None and recorder._hooks.stop_flag:
+            break
+        if msvcrt.kbhit():
+            if msvcrt.getch() in (b'\r', b'\n'):
+                break
+        time.sleep(0.05)
+
     script = recorder.stop()
+    save(script, output_dir)
     print_recording_done(script)
     input("\nPress Enter to return to menu...")
 

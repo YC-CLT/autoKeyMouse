@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-08-13 — 录制回放 Bug 修复
+
+### 修复
+
+- **script.json 未保存**：`handle_record` / `_tui_record` 未调用 `save()`，只有截图 PNG 写入磁盘，脚本数据丢失
+- **F9 停止热键不起效**：录制循环只捕获 `KeyboardInterrupt`，不检查 `stop_flag`。TUI 改用 `msvcrt` 非阻塞轮询
+- **图片重复**：鼠标 down/up 各截一张图，位置相同内容几乎一样。改为只在 down 事件截图
+- **Pillow 12.3.0 兼容**：`_grayscale_from_argb` 私有 API 被移除，改用 `Image.convert("L")`
+- **F9 自爆**：停止热键的 keydown/keyup 被写入脚本，回放时模拟 F9 触发 player 自身 hook 导致回放中止。录制端过滤停止热键
+- **Windows DPI 坐标偏移**：高 DPI 下 `ImageGrab.grab()` 与 `SetCursorPos` 坐标系不一致。入口加 `SetProcessDPIAware()`
+
+### 测试
+
+- 111 tests passed
+
+---
+
 ## 2026-08-13 — pyproject.toml 完善 + README 双语
 
 ### 新增

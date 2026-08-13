@@ -1,4 +1,5 @@
 import argparse
+import ctypes
 import sys
 
 from cli.commands import (
@@ -11,6 +12,7 @@ from cli.commands import (
 
 
 def main() -> None:
+    ctypes.windll.user32.SetProcessDPIAware()
     parser = argparse.ArgumentParser(
         prog="autokeymouse",
         description="Keyboard/mouse recording and playback tool for Windows",

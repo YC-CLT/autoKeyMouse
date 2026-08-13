@@ -13,7 +13,7 @@ from cli.display import (
 )
 from engine.player import Player
 from engine.recorder import Recorder
-from engine.script import Event, Script, load
+from engine.script import Event, Script, load, save
 
 
 def register_commands(subparsers) -> None:
@@ -86,12 +86,15 @@ def handle_record(args) -> int:
     recorder.start()
 
     try:
-        while True:
+        while recorder.is_recording():
+            if recorder._hooks is not None and recorder._hooks.stop_flag:
+                break
             time.sleep(0.1)
     except KeyboardInterrupt:
         pass
 
     script = recorder.stop()
+    save(script, output_dir)
     print_recording_done(script)
     return 0
 
