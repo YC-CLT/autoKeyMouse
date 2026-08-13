@@ -14,7 +14,6 @@
 | `engine/script.py` | Event/Script 数据模型 + JSON 存取 |
 | `engine/capture.py` | PIL 截图 + 边缘裁剪 |
 | `engine/matcher.py` | FFT NCC 模板匹配 |
-| `engine/kalman.py` | 2D 卡尔曼滤波 |
 | `engine/hooks.py` | pyWinhook 全局钩子封装 |
 | `engine/recorder.py` | 录制调度器 |
 | `engine/player.py` | 回放调度器 |
@@ -37,9 +36,6 @@
 | `SHOT_RADIUS` | `50` | 截图裁剪半径 (px) |
 | `MATCH_CONFIDENCE` | `0.85` | NCC 置信度阈值 |
 | `MATCH_SEARCH_RADIUS` | `100` | 搜索 ROI 半径 (px) |
-| `KALMAN_PROCESS_NOISE` | `1e-2` | 卡尔曼过程噪声 |
-| `KALMAN_MEASURE_NOISE` | `1e-1` | 卡尔曼观测噪声 |
-| `KALMAN_MAX_CONSECUTIVE_MISS` | `5` | 连续失配判定失效阈值 |
 | `MOUSE_MOVE_INTERVAL_MS` | `200` | 鼠标移动事件最小间隔 |
 
 ## 规则
@@ -69,6 +65,8 @@
 - **Windows DPI 缩放导致坐标偏移**：高 DPI 下 `ImageGrab.grab()` 返回虚拟化尺寸，但 `SetCursorPos` 用物理像素，坐标换算错位。入口处调用 `SetProcessDPIAware()` 强制物理像素坐标系
 - **日志模块全局状态需可重置**：`setup_logging()` 的 `_setup_done` 标志在测试间会污染，需要提供 `_reset_setup()` 函数清空 handlers 和重置标志，并在 `setup_method`/`teardown_method` 中调用
 - **TimedRotatingFileHandler 在 Windows 上锁文件**：handler 持有日志文件句柄，`TemporaryDirectory` 清理时抛出 `PermissionError`。测试中必须在 `with` 块内先 `_reset_setup()` 关闭 handler，再退出 `with` 块让 tempdir 清理
+- **Kalman 滤波不适合追踪静止 UI 元素**：低过程噪声导致协方差收敛，Kalman Gain 趋近零，无法从匹配失败中恢复。键盘录制回放场景下，简单的 offset 追踪比 Kalman 更合适：窗口偏移是全局的、一致的，所有按钮共享同一个偏移量
+- **三档递进搜索策略**：原始+offset → 原始坐标 → 全屏 → 兜底，逐级降级确保不因单点匹配失败而整体回放中断
 
 ## 工作流
 
