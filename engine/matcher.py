@@ -2,6 +2,10 @@ from typing import Optional
 
 import numpy as np
 
+from engine.logger import get_logger
+
+_log = get_logger("engine.matcher")
+
 TemplateMatchResult = tuple[tuple[int, int], float]
 
 
@@ -27,6 +31,7 @@ def match_template(
     roi_h, roi_w = roi.shape
 
     if roi_h < h or roi_w < w:
+        _log.warning("ROI too small for matching: roi=%dx%d template=%dx%d", roi_w, roi_h, w, h)
         return None
 
     sum_t = float(np.sum(template))
@@ -85,6 +90,7 @@ def match_template(
         return None
 
     if best_conf < confidence_threshold:
+        _log.debug("Confidence below threshold: %.3f < %.3f", best_conf, confidence_threshold)
         return None
 
     return ((screen_x, screen_y), float(best_conf))
