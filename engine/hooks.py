@@ -8,6 +8,9 @@ import win32api
 import win32con
 
 from config import STOP_HOTKEY
+from engine.logger import get_logger
+
+_log = get_logger("engine.hooks")
 
 
 class HookManager:
@@ -26,6 +29,7 @@ class HookManager:
     def _on_keyboard(self, event):
         action = "down" if "down" in event.MessageName.lower() else "up"
         key_name = event.Key or ""
+        _log.debug("Key event: key=%s action=%s keycode=%s", key_name, action, event.KeyID)
         if key_name.lower() == STOP_HOTKEY.lower():
             self._stop_flag = True
         self._key_callback({
@@ -56,6 +60,7 @@ class HookManager:
             "wheel": getattr(event, "Wheel", 0),
             "timestamp": time.time(),
         })
+        _log.debug("Mouse event: action=%s pos=%s", action, event.Position)
         return True
 
     def _run(self):
@@ -66,8 +71,12 @@ class HookManager:
         self._hm.MouseMove = self._on_mouse
         self._hm.MouseWheel = self._on_mouse
 
-        self._hm.HookKeyboard()
-        self._hm.HookMouse()
+        try:
+            self._hm.HookKeyboard()
+            self._hm.HookMouse()
+        except Exception as e:
+            _log.error("Hook startup failed: %s", e)
+            raise
 
         self._running = True
         pythoncom.PumpMessages()
@@ -76,6 +85,7 @@ class HookManager:
         self._stop_flag = False
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+        _log.info("Hooks started")
 
     def stop(self):
         self._running = False
