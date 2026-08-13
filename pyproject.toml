@@ -1,11 +1,11 @@
 [project]
-name = "autocurser"
+name = "autokeymouse"
 version = "0.1.0"
 description = "Keyboard/mouse recording and playback tool for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-authors = [{ name = "autoCurser" }]
+authors = [{ name = "autokeymouse" }]
 keywords = ["automation", "keyboard", "mouse", "recording", "playback", "macro"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -26,11 +26,11 @@ dependencies = [
 ]
 
 [project.scripts]
-autocurser = "main:main"
+autokeymouse = "main:main"
 
 [project.urls]
-Homepage = "https://github.com/YC-CLT/autocurser"
-Issues = "https://github.com/YC-CLT/autocurser/issues"
+Homepage = "https://github.com/YC-CLT/autokeymouse"
+Issues = "https://github.com/YC-CLT/autokeymouse/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]

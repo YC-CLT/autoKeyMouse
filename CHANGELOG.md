@@ -4,12 +4,12 @@
 
 ### 新增
 
-- **pyproject.toml**: `[project.scripts]` 入口点 (`autocurser` 命令), `[build-system]` hatchling, `[tool.hatch.build.targets.wheel]` flat layout 配置, `[tool.uv] package = true`, 项目元数据 (license/authors/keywords/classifiers/urls)
+- **pyproject.toml**: `[project.scripts]` 入口点 (`autokeymouse` 命令), `[build-system]` hatchling, `[tool.hatch.build.targets.wheel]` flat layout 配置, `[tool.uv] package = true`, 项目元数据 (license/authors/keywords/classifiers/urls)
 - **README.md**: 上半英文 + 下半中文双语, 语言切换锚点, 安装/快速上手/工作原理/配置表/项目结构
 
 ### 修复
 
-- 支持 `uv tool install -e .` 安装后直接 `autocurser` 命令
+- 支持 `uv tool install -e .` 安装后直接 `autokeymouse` 命令
 
 ---
 

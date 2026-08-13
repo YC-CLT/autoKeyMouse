@@ -1,4 +1,4 @@
-# autoCurser
+# autokeymouse
 
 [English](#english) | [中文](#中文)
 
@@ -26,41 +26,41 @@ Keyboard/mouse recording and playback tool for Windows — with screenshot-ancho
 
 ```bash
 # Install from local source (editable)
-git clone https://github.com/YC-CLT/autocurser.git
-cd autocurser
+git clone https://github.com/YC-CLT/autokeymouse.git
+cd autokeymouse
 uv tool install -e .
 
 # Or run directly in dev mode
 uv sync --extra dev
-uv run autocurser --help
+uv run autokeymouse --help
 ```
 
 ## Quick Start
 
 ```bash
 # Record keystrokes and mouse clicks (default: no mouse movement)
-uv run autocurser record
+uv run autokeymouse record
 
 # Record with mouse movement
-uv run autocurser record --record-move
+uv run autokeymouse record --record-move
 
 # Record to a custom directory
-uv run autocurser record -o my_script
+uv run autokeymouse record -o my_script
 
 # Play back a recorded script
-uv run autocurser play scripts/2026-08-13_1430
+uv run autokeymouse play scripts/2026-08-13_1430
 
 # Play back 5 times at 2x speed, no template matching
-uv run autocurser play scripts/2026-08-13_1430 -n 5 -s 2.0 --nomatch
+uv run autokeymouse play scripts/2026-08-13_1430 -n 5 -s 2.0 --nomatch
 
 # List recorded scripts
-uv run autocurser list
+uv run autokeymouse list
 
 # Inspect a script
-uv run autocurser inspect scripts/2026-08-13_1430
+uv run autokeymouse inspect scripts/2026-08-13_1430
 
 # Launch interactive TUI
-uv run autocurser tui
+uv run autokeymouse tui
 ```
 
 ## How It Works
@@ -107,7 +107,7 @@ All constants in [config.py](config.py):
 ## Project Structure
 
 ```bash
-autocurser/
+autokeymouse/
 ├── main.py              # CLI entry point
 ├── config.py            # All configuration constants
 ├── engine/              # Pure logic, no UI
@@ -156,41 +156,41 @@ Windows 键盘鼠标录制回放工具 — 基于截图锚定的模板匹配 + �
 
 ```bash
 # 从本地源码安装（可编辑模式）
-git clone https://github.com/YC-CLT/autocurser.git
-cd autocurser
+git clone https://github.com/YC-CLT/autokeymouse.git
+cd autokeymouse
 uv tool install -e .
 
 # 或者直接开发模式运行
 uv sync --extra dev
-uv run autocurser --help
+uv run autokeymouse --help
 ```
 
 ## 快速上手
 
 ```bash
 # 录制键盘和鼠标点击（默认不录制鼠标移动）
-uv run autocurser record
+uv run autokeymouse record
 
 # 录制鼠标移动
-uv run autocurser record --record-move
+uv run autokeymouse record --record-move
 
 # 录制到自定义目录
-uv run autocurser record -o my_script
+uv run autokeymouse record -o my_script
 
 # 回放已录制的脚本
-uv run autocurser play scripts/2026-08-13_1430
+uv run autokeymouse play scripts/2026-08-13_1430
 
 # 以 2 倍速循环播放 5 次，关闭模板匹配
-uv run autocurser play scripts/2026-08-13_1430 -n 5 -s 2.0 --nomatch
+uv run autokeymouse play scripts/2026-08-13_1430 -n 5 -s 2.0 --nomatch
 
 # 列出已录制脚本
-uv run autocurser list
+uv run autokeymouse list
 
 # 查看脚本详情
-uv run autocurser inspect scripts/2026-08-13_1430
+uv run autokeymouse inspect scripts/2026-08-13_1430
 
 # 启动交互式 TUI
-uv run autocurser tui
+uv run autokeymouse tui
 ```
 
 ## 工作原理
@@ -237,7 +237,7 @@ uv run autocurser tui
 ## 项目结构
 
 ```bash
-autocurser/
+autokeymouse/
 ├── main.py              # CLI 入口
 ├── config.py            # 所有配置常量
 ├── engine/              # 纯逻辑，无 UI

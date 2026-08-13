@@ -60,7 +60,7 @@ def print_progress(current: int, total: int, label: str = "") -> None:
 def print_recording_start() -> None:
     console.print(Panel.fit(
         "[bold yellow]Recording...[/bold yellow] Press [bold red]F9[/bold red] to stop.",
-        title="autoCurser",
+        title="autokeymouse",
     ))
 
 
@@ -68,7 +68,7 @@ def print_recording_done(script: Script) -> None:
     console.print(Panel.fit(
         f"[bold green]Recording complete![/bold green]\n"
         f"Events: {script.meta.event_count} | Duration: {script.meta.duration_ms}ms",
-        title="autoCurser",
+        title="autokeymouse",
     ))
 
 
@@ -76,7 +76,7 @@ def print_playback_start(script_name: str, times: int) -> None:
     console.print(Panel.fit(
         f"[bold cyan]Playing: {script_name}[/bold cyan] x{times}\n"
         f"Press [bold red]F9[/bold red] to stop.",
-        title="autoCurser",
+        title="autokeymouse",
     ))
 
 
@@ -85,7 +85,7 @@ def print_playback_done(result) -> None:
     console.print(Panel.fit(
         f"Playback {status}\n"
         f"Cycles: {result.completed_cycles} | Time: {result.total_time_ms}ms",
-        title="autoCurser",
+        title="autokeymouse",
     ))
 
 

@@ -12,7 +12,7 @@ from cli.commands import (
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="autocurser",
+        prog="autokeymouse",
         description="Keyboard/mouse recording and playback tool for Windows",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

@@ -26,7 +26,7 @@ console = Console()
 def _show_menu() -> str:
     console.clear()
     console.print(Panel.fit(
-        "[bold cyan]autoCurser[/bold cyan] - Keyboard/Mouse Recorder & Player",
+        "[bold cyan]autokeymouse[/bold cyan] - Keyboard/Mouse Recorder & Player",
         subtitle="TUI Mode",
     ))
 

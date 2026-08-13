@@ -3,7 +3,7 @@
 ## 环境
 
 - Python 3.11 + uv
-- **命令执行**：统一走 `cmd-exec-mcp`，必须先读 `../mcp_tools_summary.csv`
+- **命令执行**：统一走 `cmd-exec-mcp`，必须先读 `./mcp_tools_summary.csv`
 
 ## 关键文件
 
