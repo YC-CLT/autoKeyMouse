@@ -14,7 +14,7 @@ from config import (
     MATCH_SEARCH_RADIUS,
 )
 from engine.hooks import HookManager
-from engine.kalman import PositionKalman
+
 from engine.logger import get_logger
 from engine.matcher import match_template
 from engine.script import Event, load
@@ -43,6 +43,7 @@ class Player:
         self._speed = max(0.01, speed)
         self._use_match = use_match
         self._stop_flag = False
+        self._offset = (0, 0)
         self._hooks: Optional[HookManager] = None
 
     def _rel_to_abs(
@@ -67,39 +68,65 @@ class Player:
     def _pos_match(
         self,
         event: Event,
-        kalman: Optional[PositionKalman],
         screen_w: int,
         screen_h: int,
     ) -> tuple[int, int]:
-        if not self._use_match or event.shot is None or kalman is None:
-            return self._rel_to_abs(event.pos, screen_w, screen_h)
+        ox, oy = self._rel_to_abs(event.pos, screen_w, screen_h)
 
-        predicted = kalman.predict()
-        expected_x, expected_y = int(predicted[0]), int(predicted[1])
+        if not self._use_match or event.shot is None:
+            return (ox + self._offset[0], oy + self._offset[1])
 
         shot = self._load_shot(event.shot)
         if shot is None:
-            _log.warning("Falling back to recorded position: shot missing")
-            return self._rel_to_abs(event.pos, screen_w, screen_h)
+            _log.warning("Shot not found, falling back to original+offset")
+            return (ox + self._offset[0], oy + self._offset[1])
 
         screen = self._capture_screen()
-        result = match_template(
-            screen,
-            shot,
-            (expected_x, expected_y),
-            MATCH_SEARCH_RADIUS,
-            MATCH_CONFIDENCE,
-        )
 
+        # 尝试 1: 原始坐标 + offset 周围搜索
+        guess_x = ox + self._offset[0]
+        guess_y = oy + self._offset[1]
+        result = match_template(
+            screen, shot, (guess_x, guess_y),
+            MATCH_SEARCH_RADIUS, MATCH_CONFIDENCE,
+        )
         if result is not None:
             (mx, my), confidence = result
-            kalman.update(np.array([mx, my], dtype=np.float64))
-            _log.debug("Template matched: pos=(%d,%d) confidence=%.3f", mx, my, confidence)
+            self._offset = (mx - ox, my - oy)
+            _log.debug("Matched at offset: pos=(%d,%d) conf=%.3f", mx, my, confidence)
             return (mx, my)
-        else:
-            _log.warning("Template match failed, falling back to kalman prediction: pos=(%d,%d)",
-                         expected_x, expected_y)
-            return (int(predicted[0]), int(predicted[1]))
+
+        # 尝试 2: 纯原始坐标周围搜索（offset 可能过时）
+        _log.debug("Offset search failed, trying original position")
+        result = match_template(
+            screen, shot, (ox, oy),
+            MATCH_SEARCH_RADIUS, MATCH_CONFIDENCE,
+        )
+        if result is not None:
+            (mx, my), confidence = result
+            self._offset = (mx - ox, my - oy)
+            _log.info("Re-matched at original: pos=(%d,%d) conf=%.3f offset=(%d,%d)",
+                       mx, my, confidence, self._offset[0], self._offset[1])
+            return (mx, my)
+
+        # 尝试 3: 全屏搜索
+        _log.warning("Local search failed, trying full-screen search")
+        full_radius = max(screen_w, screen_h)
+        result = match_template(
+            screen, shot, (ox, oy),
+            full_radius, MATCH_CONFIDENCE,
+        )
+        if result is not None:
+            (mx, my), confidence = result
+            self._offset = (mx - ox, my - oy)
+            _log.warning("Full-screen match: pos=(%d,%d) conf=%.3f offset=(%d,%d)",
+                          mx, my, confidence, self._offset[0], self._offset[1])
+            return (mx, my)
+
+        # 兜底: 原始坐标 + offset
+        _log.error("All match strategies failed, falling back to original+offset: (%d,%d)",
+                   guess_x, guess_y)
+        return (guess_x, guess_y)
 
     def _execute_mouse_event(self, event: Event, x: int, y: int):
         win32api.SetCursorPos((x, y))
@@ -184,14 +211,7 @@ class Player:
 
                 _log.info("Cycle %d/%d starting", cycle + 1, self._times)
 
-                kalman = None
-                if self._use_match:
-                    first_event = self._script.events[0]
-                    if first_event.pos is not None:
-                        init_x, init_y = self._rel_to_abs(
-                            first_event.pos, screen_w, screen_h
-                        )
-                        kalman = PositionKalman(float(init_x), float(init_y))
+                self._offset = (0, 0)
 
                 for event in self._script.events:
                     if self._stop_flag or self._check_stop():
@@ -206,7 +226,7 @@ class Player:
 
                     try:
                         if event.type == "mouse":
-                            x, y = self._pos_match(event, kalman, screen_w, screen_h)
+                            x, y = self._pos_match(event, screen_w, screen_h)
                             _log.info("Mouse event: action=%s pos=(%d,%d)", event.action, x, y)
                             self._execute_mouse_event(event, x, y)
                         elif event.type == "key":
