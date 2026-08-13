@@ -17,6 +17,7 @@ from cli.display import (
     print_script_list,
     print_summary,
 )
+from engine.logger import setup_logging
 from engine.player import Player
 from engine.recorder import Recorder
 from engine.script import load, save
@@ -187,6 +188,7 @@ def _tui_inspect() -> None:
 
 
 def run_tui() -> None:
+    setup_logging()
     while True:
         choice = _show_menu()
         if choice == "1":

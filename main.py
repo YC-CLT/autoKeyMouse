@@ -9,9 +9,11 @@ from cli.commands import (
     handle_record,
     register_commands,
 )
+from engine.logger import setup_logging
 
 
 def main() -> None:
+    setup_logging()
     ctypes.windll.user32.SetProcessDPIAware()
     parser = argparse.ArgumentParser(
         prog="autokeymouse",
