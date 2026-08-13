@@ -17,10 +17,12 @@ from cli.display import (
     print_script_list,
     print_summary,
 )
-from engine.logger import setup_logging
+from engine.logger import setup_logging, get_logger
 from engine.player import Player
 from engine.recorder import Recorder
 from engine.script import load, save
+
+_log = get_logger("tui.app")
 
 console = Console()
 
@@ -66,6 +68,7 @@ def _tui_record() -> None:
 
     recorder = Recorder(output_dir=output_dir, shot_radius=shot_radius)
 
+    _log.info("TUI record: output=%s", output_dir)
     print_recording_start()
     console.print("[dim]Press Enter or F9 to stop recording...[/dim]")
     recorder.start()
@@ -114,6 +117,7 @@ def _tui_play() -> None:
 
     use_match = Prompt.ask("Use template matching?", choices=["y", "n"], default="y")
 
+    _log.info("TUI play: script=%s", script_dir)
     print_playback_start(script_name, times)
     player = Player(
         script_dir=script_dir,

@@ -14,6 +14,9 @@ from cli.display import (
 from engine.player import Player
 from engine.recorder import Recorder
 from engine.script import Event, Script, load, save
+from engine.logger import get_logger
+
+_log = get_logger("cli.commands")
 
 
 def register_commands(subparsers) -> None:
@@ -23,8 +26,8 @@ def register_commands(subparsers) -> None:
         help="Output directory (default: scripts/<timestamp>/)",
     )
     record_parser.add_argument(
-        "--record-move", action="store_true", default=False,
-        help="Record mouse movement",
+        "--no-record-move", action="store_false", dest="record_move", default=True,
+        help="Disable recording mouse movement",
     )
     record_parser.add_argument(
         "--move-interval", type=int, default=200,
@@ -73,6 +76,7 @@ def _default_output_dir() -> str:
 
 def handle_record(args) -> int:
     output_dir = args.output or _default_output_dir()
+    _log.info("Command: record output=%s record_move=%s", output_dir, args.record_move)
 
     recorder = Recorder(
         output_dir=output_dir,
@@ -101,6 +105,8 @@ def handle_record(args) -> int:
 
 def handle_play(args) -> int:
     script_dir = args.script
+    _log.info("Command: play script=%s times=%d speed=%.1f match=%s",
+              script_dir, args.times, args.speed, not args.nomatch)
     print_playback_start(script_dir, args.times)
 
     player = Player(
@@ -117,6 +123,7 @@ def handle_play(args) -> int:
 
 def handle_list(args) -> int:
     base_dir = args.dir or "scripts"
+    _log.info("Command: list dir=%s", base_dir)
     scripts = []
 
     if os.path.isdir(base_dir):
@@ -139,6 +146,11 @@ def handle_list(args) -> int:
 
 
 def handle_inspect(args) -> int:
-    script = load(args.script)
-    print_summary(script)
-    return 0
+    _log.info("Command: inspect script=%s", args.script)
+    try:
+        script = load(args.script)
+        print_summary(script)
+        return 0
+    except Exception as e:
+        _log.error("Failed to load script: %s error=%s", args.script, e)
+        raise
