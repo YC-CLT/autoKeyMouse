@@ -2,27 +2,52 @@
 
 ## 环境
 
-- Python 3.11，uv 管理依赖
-- config.py 集中配置所有常量，pyproject.toml 管理依赖
-- **命令执行**：统一走 `cmd-exec-mcp`，详见 `../mcp_tools_summary.csv`
+- Python 3.11 + uv
+- **命令执行**：统一走 `cmd-exec-mcp`，必须先读 `../mcp_tools_summary.csv`
 
 ## 关键文件
 
-## 参考文档
+| 文件 | 作用 |
+|------|------|
+| `config.py` | 所有配置常量集中管理 |
+| `main.py` | CLI 入口，argparse 子命令分发 |
+| `engine/script.py` | Event/Script 数据模型 + JSON 存取 |
+| `engine/capture.py` | PIL 截图 + 边缘裁剪 |
+| `engine/matcher.py` | FFT NCC 模板匹配 |
+| `engine/kalman.py` | 2D 卡尔曼滤波 |
+| `engine/hooks.py` | pyWinhook 全局钩子封装 |
+| `engine/recorder.py` | 录制调度器 |
+| `engine/player.py` | 回放调度器 |
+| `cli/commands.py` | 5 个子命令处理 (record/play/list/inspect/tui) |
+| `tui/app.py` | Rich Live 交互菜单 |
 
-- 原版参考：`D:\CodeFile\Agent\KeymouseGo\README.md`
+## 关键常量
+
+所有常量在 `config.py`，修改后全量 grep 同步引用。
+
+| 常量 | 默认值 | 说明 |
+|------|--------|------|
+| `STOP_HOTKEY` | `"f9"` | 全局停止热键 |
+| `SHOT_RADIUS` | `50` | 截图裁剪半径 (px) |
+| `MATCH_CONFIDENCE` | `0.85` | NCC 置信度阈值 |
+| `MATCH_SEARCH_RADIUS` | `100` | 搜索 ROI 半径 (px) |
+| `KALMAN_PROCESS_NOISE` | `1e-2` | 卡尔曼过程噪声 |
+| `KALMAN_MEASURE_NOISE` | `1e-1` | 卡尔曼观测噪声 |
+| `KALMAN_MAX_CONSECUTIVE_MISS` | `5` | 连续失配判定失效阈值 |
+| `MOUSE_MOVE_INTERVAL_MS` | `200` | 鼠标移动事件最小间隔 |
 
 ## 规则
 
 - **config 重命名全量 grep**：常量改名/移除后，搜索所有引用点确保同步更新
+- 可并行的指令用 `parallel=True`
+- `wet-mcp extract` 可下载文件/抓取页面媒体组件
+- `Read` 无法访问 `D:\Temp`，MCP 长输出需 `Copy-Item` 到项目根目录，然后正则替换 `\\n` 为 `\n`，否则输出超长行
+- `write` 无法使用`replace_all`，使用正则替换
+- 快速搜索优先 `WebSearch`（更快），深度内容再用 `wet-mcp`；提取网站内容必须用 `wet-mcp` 的 `extract`
 
 ## 工具
 
-- 详见 `../mcp_tools_summary.csv`
-- 可并行的指令用 `parallel=True`有奇效
-- `wet-mcp extract` 可下载文件/抓取页面媒体组件
-- `Read` 无法访问 `D:\Temp`，MCP 长输出需 `Copy-Item` 到项目根目录，然后正则替换 `\\n` 为 `\n`，否则输出超长行
-- 快速搜索优先 `WebSearch`（更快），深度内容再用 `wet-mcp`；提取网站内容必须用 `wet-mcp` 的 `extract`
+- MCP类见 `../mcp_tools_summary.csv`
 
 ## 经验/坑点
 
