@@ -43,7 +43,7 @@
 - `wet-mcp extract` 可下载文件/抓取页面媒体组件
 - `Read` 无法访问 `D:\Temp`，MCP 长输出需 `Copy-Item` 到项目根目录，然后正则替换 `\\n` 为 `\n`，否则输出超长行
 - `write` 无法使用`replace_all`，使用正则替换
-- 快速搜索优先 `WebSearch`（更快），深度内容再用 `wet-mcp`；提取网站内容必须用 `wet-mcp` 的 `extract`
+- 搜索通用知识/技术方案用 `WebSearch`；需要抓取特定网页完整内容（如 GitHub 源码、文档页面）用 `wet-mcp` 的 `extract`
 
 ## 工具
 
@@ -61,6 +61,8 @@
 - **Pillow 私有 API 会随版本移除**：`ImageGrab._grayscale_from_argb` 在 Pillow 12.3.0 被移除，改用 `Image.convert("L")`。依赖私有 API 时必须在 CI 中锁定版本上限
 - **停止热键会自爆**：录制时 F9 停止热键的 keydown/keyup 被写入脚本，回放时模拟 F9 会触发 player 自身 hook 的 stop_flag，导致回放立即中止。录制端必须过滤停止热键，不要写入脚本
 - **Windows DPI 缩放导致坐标偏移**：高 DPI 下 `ImageGrab.grab()` 返回虚拟化尺寸，但 `SetCursorPos` 用物理像素，坐标换算错位。入口处调用 `SetProcessDPIAware()` 强制物理像素坐标系
+- **日志模块全局状态需可重置**：`setup_logging()` 的 `_setup_done` 标志在测试间会污染，需要提供 `_reset_setup()` 函数清空 handlers 和重置标志，并在 `setup_method`/`teardown_method` 中调用
+- **TimedRotatingFileHandler 在 Windows 上锁文件**：handler 持有日志文件句柄，`TemporaryDirectory` 清理时抛出 `PermissionError`。测试中必须在 `with` 块内先 `_reset_setup()` 关闭 handler，再退出 `with` 块让 tempdir 清理
 
 ## 工作流
 

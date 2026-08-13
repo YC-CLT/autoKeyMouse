@@ -12,7 +12,6 @@
 - 与 autoKeyMouse 对比：KeymouseGo 靠事件录制回放，autoKeyMouse 靠视觉定位，互补关系
 
 ---
-
 ## 2026-08-13 — 日志系统
 
 ### 新增

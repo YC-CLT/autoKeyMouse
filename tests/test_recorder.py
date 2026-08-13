@@ -106,9 +106,9 @@ class TestRecorder:
         event = recorder._events[0]
         assert event.shot is None
 
-    def test_record_move_defaults_false(self):
+    def test_record_move_defaults_true(self):
         recorder = Recorder("/tmp/test")
-        assert recorder._record_move is False
+        assert recorder._record_move is True
 
     def test_record_move_true(self):
         recorder = Recorder("/tmp/test", record_move=True)

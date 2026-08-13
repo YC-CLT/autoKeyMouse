@@ -64,7 +64,7 @@ class TestRecordDefaults:
 
         args = parser.parse_args(["record"])
         assert args.output is None
-        assert args.record_move is False
+        assert args.record_move is True
         assert args.move_interval == 200
         assert args.shot_radius == 50
         assert args.no_shot is False
@@ -75,11 +75,11 @@ class TestRecordDefaults:
         register_commands(subparsers)
 
         args = parser.parse_args([
-            "record", "--output", "my_task", "--record-move",
+            "record", "--output", "my_task", "--no-record-move",
             "--move-interval", "100", "--shot-radius", "80", "--no-shot",
         ])
         assert args.output == "my_task"
-        assert args.record_move is True
+        assert args.record_move is False
         assert args.move_interval == 100
         assert args.shot_radius == 80
         assert args.no_shot is True

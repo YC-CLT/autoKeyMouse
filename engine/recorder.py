@@ -8,14 +8,17 @@ from PIL import ImageGrab
 from config import MOUSE_MOVE_INTERVAL_MS, SHOT_RADIUS, STOP_HOTKEY
 from engine.capture import capture
 from engine.hooks import HookManager
+from engine.logger import get_logger
 from engine.script import Event, Meta, Script
+
+_log = get_logger("engine.recorder")
 
 
 class Recorder:
     def __init__(
         self,
         output_dir: str,
-        record_move: bool = False,
+        record_move: bool = True,
         move_interval: int = MOUSE_MOVE_INTERVAL_MS,
         shot_radius: int = SHOT_RADIUS,
         no_shot: bool = False,
@@ -78,6 +81,7 @@ class Recorder:
             if not self._record_move:
                 return
             if now - self._last_mouse_move_time < self._move_interval / 1000.0:
+                _log.debug("Mouse move throttled: interval=%dms", self._move_interval)
                 return
             self._last_mouse_move_time = now
 
@@ -105,8 +109,12 @@ class Recorder:
             if self._no_shot or "up" in action:
                 shot = None
             else:
-                shot = capture(pos, self._shot_radius, self._output_dir, self._shot_index)
-                self._shot_index += 1
+                try:
+                    shot = capture(pos, self._shot_radius, self._output_dir, self._shot_index)
+                    self._shot_index += 1
+                except Exception as e:
+                    _log.error("Screenshot failed: %s", e)
+                    shot = None
             event = Event(
                 type="mouse",
                 action=action,
@@ -121,6 +129,8 @@ class Recorder:
         self._build_output_dir()
         screen = ImageGrab.grab()
         self._screen_w, self._screen_h = screen.size
+        _log.info("Recording started: dir=%s screen=%dx%d record_move=%s",
+                  self._output_dir, self._screen_w, self._screen_h, self._record_move)
         self._hooks = HookManager(
             key_callback=self._on_key_callback,
             mouse_callback=self._on_mouse_callback,
@@ -136,7 +146,10 @@ class Recorder:
         if self._hooks is not None:
             self._hooks.stop()
             self._hooks = None
-        return self._build_script()
+        script = self._build_script()
+        _log.info("Recording stopped: events=%d duration=%dms",
+                  script.meta.event_count, script.meta.duration_ms)
+        return script
 
     def is_recording(self) -> bool:
         return self._running

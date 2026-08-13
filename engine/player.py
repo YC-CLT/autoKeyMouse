@@ -15,8 +15,11 @@ from config import (
 )
 from engine.hooks import HookManager
 from engine.kalman import PositionKalman
+from engine.logger import get_logger
 from engine.matcher import match_template
 from engine.script import Event, load
+
+_log = get_logger("engine.player")
 
 
 @dataclass
@@ -53,6 +56,7 @@ class Player:
     def _load_shot(self, shot_path: str) -> Optional[np.ndarray]:
         full_path = os.path.join(self._script_dir, shot_path)
         if not os.path.exists(full_path):
+            _log.warning("Shot file not found: %s", full_path)
             return None
         return np.array(Image.open(full_path).convert("L"), dtype=np.float64)
 
@@ -75,6 +79,7 @@ class Player:
 
         shot = self._load_shot(event.shot)
         if shot is None:
+            _log.warning("Falling back to recorded position: shot missing")
             return self._rel_to_abs(event.pos, screen_w, screen_h)
 
         screen = self._capture_screen()
@@ -87,10 +92,13 @@ class Player:
         )
 
         if result is not None:
-            (mx, my), _ = result
+            (mx, my), confidence = result
             kalman.update(np.array([mx, my], dtype=np.float64))
+            _log.debug("Template matched: pos=(%d,%d) confidence=%.3f", mx, my, confidence)
             return (mx, my)
         else:
+            _log.warning("Template match failed, falling back to kalman prediction: pos=(%d,%d)",
+                         expected_x, expected_y)
             return (int(predicted[0]), int(predicted[1]))
 
     def _execute_mouse_event(self, event: Event, x: int, y: int):
@@ -158,6 +166,8 @@ class Player:
     def play(self) -> PlayerResult:
         screen = ImageGrab.grab()
         screen_w, screen_h = screen.size
+        _log.info("Playback started: script=%s times=%d speed=%.1f screen=%dx%d match=%s",
+                  self._script_dir, self._times, self._speed, screen_w, screen_h, self._use_match)
 
         self._stop_flag = False
         self._start_stop_listener()
@@ -171,6 +181,8 @@ class Player:
                 if self._stop_flag or self._check_stop():
                     result.stopped_early = True
                     break
+
+                _log.info("Cycle %d/%d starting", cycle + 1, self._times)
 
                 kalman = None
                 if self._use_match:
@@ -189,19 +201,33 @@ class Player:
                     delay_ms = self._calc_delay(event.delay_ms)
                     time.sleep(delay_ms / 1000.0)
 
-                    if event.type == "mouse":
-                        x, y = self._pos_match(event, kalman, screen_w, screen_h)
-                        self._execute_mouse_event(event, x, y)
-                    elif event.type == "key":
-                        self._execute_key_event(event)
-                    elif event.type == "text":
-                        self._execute_text_event(event)
+                    _log.debug("Event: type=%s action=%s pos=%s delay=%dms",
+                               event.type, event.action, event.pos, event.delay_ms)
+
+                    try:
+                        if event.type == "mouse":
+                            x, y = self._pos_match(event, kalman, screen_w, screen_h)
+                            _log.info("Mouse event: action=%s pos=(%d,%d)", event.action, x, y)
+                            self._execute_mouse_event(event, x, y)
+                        elif event.type == "key":
+                            _log.info("Key event: key=%s action=%s", event.key, event.action)
+                            self._execute_key_event(event)
+                        elif event.type == "text":
+                            _log.info("Text event: len=%d", len(event.text or ""))
+                            self._execute_text_event(event)
+                    except Exception as e:
+                        _log.error("Event execution failed: type=%s action=%s error=%s",
+                                   event.type, event.action, e)
+                        raise
 
                 if not result.stopped_early:
+                    _log.info("Cycle %d/%d completed", cycle + 1, self._times)
                     result.completed_cycles += 1
 
             result.total_time_ms = int((time.time() - start_time) * 1000)
         finally:
             self._stop_listener()
 
+        _log.info("Playback finished: cycles=%d/%d time=%dms stopped_early=%s",
+                  result.completed_cycles, self._times, result.total_time_ms, result.stopped_early)
         return result
