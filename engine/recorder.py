@@ -82,8 +82,7 @@ class Recorder:
 
         if action == "move":
             if self._drag_button is not None:
-                elapsed = int((now - self._drag_start_time) * 1000)
-                if elapsed < DRAG_THRESHOLD_MS:
+                if int(round((now - self._drag_start_time) * 1000)) < DRAG_THRESHOLD_MS:
                     return
                 delay_ms = int((now - self._last_event_time) * 1000)
                 self._last_event_time = now
@@ -144,8 +143,8 @@ class Recorder:
             else:
                 is_drag = False
                 if action == "left_up" and self._drag_button == "left":
-                    elapsed = int((now - self._drag_start_time) * 1000)
-                    is_drag = elapsed >= DRAG_THRESHOLD_MS and self._drag_move_count > 0
+                    is_drag = (int(round((now - self._drag_start_time) * 1000)) >= DRAG_THRESHOLD_MS
+                               and self._drag_move_count > 0)
                 self._drag_button = None
                 self._drag_start_time = 0.0
                 if self._no_shot or not is_drag:
