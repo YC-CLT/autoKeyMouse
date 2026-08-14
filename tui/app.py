@@ -67,6 +67,7 @@ def _tui_record() -> None:
     no_shot = Prompt.ask("Disable screenshots?", choices=["y", "n"], default="n")
     shot_radius = 0 if no_shot == "y" else SHOT_RADIUS
 
+    compress = Prompt.ask("Compress move events?", choices=["y", "n"], default="y")
     record_move = Prompt.ask("Record mouse movement?", choices=["y", "n"], default="y")
     move_interval = MOUSE_MOVE_INTERVAL_MS
     if record_move == "y":
@@ -81,6 +82,7 @@ def _tui_record() -> None:
         shot_radius=shot_radius,
         record_move=record_move == "y",
         move_interval=move_interval,
+        compress=compress == "y",
     )
 
     _log.info("TUI record: output=%s", output_dir)
