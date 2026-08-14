@@ -5,7 +5,7 @@ from typing import Optional
 
 from PIL import ImageGrab
 
-from config import MOUSE_MOVE_INTERVAL_MS, SHOT_RADIUS, STOP_HOTKEY
+from config import MOUSE_MOVE_INTERVAL_MS, DRAG_THRESHOLD_MS, SHOT_RADIUS, STOP_HOTKEY
 from engine.capture import capture
 from engine.hooks import HookManager
 from engine.logger import get_logger
@@ -38,6 +38,9 @@ class Recorder:
         self._screen_w = 0
         self._screen_h = 0
         self._hooks: Optional[HookManager] = None
+        self._drag_button: Optional[str] = None
+        self._drag_start_time = 0.0
+        self._drag_move_count = 0
 
     def _build_output_dir(self):
         os.makedirs(self._output_dir, exist_ok=True)
@@ -78,12 +81,29 @@ class Recorder:
         action = data["action"]
 
         if action == "move":
-            if not self._record_move:
+            if self._drag_button is not None:
+                if int(round((now - self._drag_start_time) * 1000)) < DRAG_THRESHOLD_MS:
+                    return
+                delay_ms = int((now - self._last_event_time) * 1000)
+                self._last_event_time = now
+                pos = data["pos"]
+                rel_pos = list(self._relative_pos(pos[0], pos[1], self._screen_w, self._screen_h))
+                event = Event(
+                    type="mouse",
+                    action=action,
+                    delay_ms=delay_ms,
+                    pos=rel_pos,
+                )
+                self._events.append(event)
+                self._drag_move_count += 1
                 return
-            if now - self._last_mouse_move_time < self._move_interval / 1000.0:
-                _log.debug("Mouse move throttled: interval=%dms", self._move_interval)
-                return
-            self._last_mouse_move_time = now
+            else:
+                if not self._record_move:
+                    return
+                if now - self._last_mouse_move_time < self._move_interval / 1000.0:
+                    _log.debug("Mouse move throttled: interval=%dms", self._move_interval)
+                    return
+                self._last_mouse_move_time = now
 
         delay_ms = int((now - self._last_event_time) * 1000)
         self._last_event_time = now
@@ -106,15 +126,36 @@ class Recorder:
                 pos=rel_pos,
             )
         else:
-            if self._no_shot or "up" in action:
-                shot = None
-            else:
-                try:
-                    shot = capture(pos, self._shot_radius, self._output_dir, self._shot_index)
-                    self._shot_index += 1
-                except Exception as e:
-                    _log.error("Screenshot failed: %s", e)
+            if "down" in action:
+                if action == "left_down":
+                    self._drag_button = "left"
+                    self._drag_start_time = now
+                    self._drag_move_count = 0
+                if self._no_shot:
                     shot = None
+                else:
+                    try:
+                        shot = capture(pos, self._shot_radius, self._output_dir, self._shot_index)
+                        self._shot_index += 1
+                    except Exception as e:
+                        _log.error("Screenshot failed: %s", e)
+                        shot = None
+            else:
+                is_drag = False
+                if action == "left_up" and self._drag_button == "left":
+                    is_drag = (int(round((now - self._drag_start_time) * 1000)) >= DRAG_THRESHOLD_MS
+                               and self._drag_move_count > 0)
+                self._drag_button = None
+                self._drag_start_time = 0.0
+                if self._no_shot or not is_drag:
+                    shot = None
+                else:
+                    try:
+                        shot = capture(pos, self._shot_radius, self._output_dir, self._shot_index)
+                        self._shot_index += 1
+                    except Exception as e:
+                        _log.error("Screenshot failed: %s", e)
+                        shot = None
             event = Event(
                 type="mouse",
                 action=action,

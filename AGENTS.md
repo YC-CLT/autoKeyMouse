@@ -67,6 +67,7 @@
 - **TimedRotatingFileHandler 在 Windows 上锁文件**：handler 持有日志文件句柄，`TemporaryDirectory` 清理时抛出 `PermissionError`。测试中必须在 `with` 块内先 `_reset_setup()` 关闭 handler，再退出 `with` 块让 tempdir 清理
 - **Kalman 滤波不适合追踪静止 UI 元素**：低过程噪声导致协方差收敛，Kalman Gain 趋近零，无法从匹配失败中恢复。键盘录制回放场景下，简单的 offset 追踪比 Kalman 更合适：窗口偏移是全局的、一致的，所有按钮共享同一个偏移量
 - **三档递进搜索策略**：原始+offset → 原始坐标 → 全屏 → 兜底，逐级降级确保不因单点匹配失败而整体回放中断
+- **浮点时间比较需 `round()`**：`int((now - start) * 1000)` 在 `0.3 * 1000` 时产生 `299.999...` 而非 `300`，`int()` 截断导致 off-by-one。用 `int(round(...))` 修复。mock `time.time()` 测试时需用 `patch("engine.recorder.time.time", ...)` 而非 `patch("time.time", ...)`，否则 `side_effect` 值可能被非预期调用消耗
 
 ## 工作流
 
