@@ -42,6 +42,10 @@ def register_commands(subparsers) -> None:
         "--no-shot", action="store_true", default=False,
         help="Disable screenshots for mouse events",
     )
+    record_parser.add_argument(
+        "--no-compress", action="store_true", default=False,
+        help="Disable move compression (keep all move events individually)",
+    )
 
     play_parser = subparsers.add_parser("play", help="Play back a recorded script")
     play_parser.add_argument("script", type=str, help="Script directory to play")
@@ -85,6 +89,7 @@ def handle_record(args) -> int:
         move_interval=args.move_interval,
         shot_radius=args.shot_radius,
         no_shot=args.no_shot,
+        compress=not args.no_compress,
     )
 
     print_recording_start()

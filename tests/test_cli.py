@@ -69,6 +69,7 @@ class TestRecordDefaults:
         assert args.move_interval == MOUSE_MOVE_INTERVAL_MS
         assert args.shot_radius == SHOT_RADIUS
         assert args.no_shot is False
+        assert args.no_compress is False
 
     def test_record_custom_options(self):
         parser = argparse.ArgumentParser()
@@ -77,13 +78,14 @@ class TestRecordDefaults:
 
         args = parser.parse_args([
             "record", "--output", "my_task", "--no-record-move",
-            "--move-interval", "100", "--shot-radius", "80", "--no-shot",
+            "--move-interval", "100", "--shot-radius", "80", "--no-shot", "--no-compress",
         ])
         assert args.output == "my_task"
         assert args.record_move is False
         assert args.move_interval == 100
         assert args.shot_radius == 80
         assert args.no_shot is True
+        assert args.no_compress is True
 
 
 class TestPlayDefaults:
