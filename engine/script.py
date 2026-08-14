@@ -14,6 +14,8 @@ class Event:
     keycode: Optional[int] = None
     text: Optional[str] = None
     shot: Optional[str] = None
+    positions: Optional[list[list[float]]] = None
+    delays: Optional[list[int]] = None
 
 
 @dataclass
