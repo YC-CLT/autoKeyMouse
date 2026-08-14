@@ -43,8 +43,12 @@ class TestRecorderDrag:
         })
 
         assert recorder._drag_move_count == 3
+        recorder._flush_move_buffer()
         move_events = [e for e in recorder._events if e.action == "move"]
-        assert len(move_events) == 3
+        assert len(move_events) == 1
+        compressed = move_events[0]
+        assert len(compressed.positions) == 3
+        assert len(compressed.delays) == 2
 
     @patch("time.time")
     def test_click_moves_throttled(self, mock_time):
@@ -62,6 +66,7 @@ class TestRecorderDrag:
             "wheel": 0,
             "timestamp": 1000.0,
         })
+        recorder._flush_move_buffer()
         assert len(recorder._events) == 1
 
         recorder._on_mouse_callback({
@@ -70,6 +75,7 @@ class TestRecorderDrag:
             "wheel": 0,
             "timestamp": 1000.1,
         })
+        recorder._flush_move_buffer()
         assert len(recorder._events) == 1
 
         recorder._on_mouse_callback({
@@ -78,6 +84,7 @@ class TestRecorderDrag:
             "wheel": 0,
             "timestamp": 1000.3,
         })
+        recorder._flush_move_buffer()
         assert len(recorder._events) == 2
 
     @patch("time.time")
@@ -191,6 +198,7 @@ class TestRecorderDrag:
             "timestamp": 1000.0 + threshold_s,
         })
 
+        recorder._flush_move_buffer()
         move_events = [e for e in recorder._events if e.action == "move"]
         assert len(move_events) == 1
         assert recorder._drag_move_count == 1

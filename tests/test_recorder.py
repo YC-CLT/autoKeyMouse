@@ -151,3 +151,88 @@ class TestRecorder:
         assert script.meta.event_count == 2
         assert len(script.events) == 2
         assert abs(script.meta.duration_ms - 30) <= 1
+
+    def test_add_event_compresses_consecutive_moves(self):
+        recorder = Recorder("/tmp/test", compress=True)
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.0
+        recorder._screen_w = 1920
+        recorder._screen_h = 1080
+
+        e1 = Event(type="mouse", action="move", delay_ms=500, pos=[0.1, 0.1])
+        e2 = Event(type="mouse", action="move", delay_ms=200, pos=[0.2, 0.2])
+        e3 = Event(type="mouse", action="move", delay_ms=200, pos=[0.3, 0.3])
+        recorder._add_event(e1)
+        recorder._add_event(e2)
+        recorder._add_event(e3)
+        assert len(recorder._events) == 0
+
+        e4 = Event(type="mouse", action="left_down", delay_ms=100, pos=[0.3, 0.3])
+        recorder._add_event(e4)
+        assert len(recorder._events) == 2
+        compressed = recorder._events[0]
+        assert compressed.type == "mouse"
+        assert compressed.action == "move"
+        assert compressed.positions == [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]]
+        assert compressed.delays is None
+        assert compressed.pos == [0.1, 0.1]
+        assert compressed.delay_ms == 500
+
+    def test_add_event_single_move_not_compressed(self):
+        recorder = Recorder("/tmp/test", compress=True)
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.0
+
+        e1 = Event(type="mouse", action="move", delay_ms=500, pos=[0.1, 0.1])
+        recorder._add_event(e1)
+        e2 = Event(type="key", action="down", delay_ms=100, key="a", keycode=65)
+        recorder._add_event(e2)
+        assert len(recorder._events) == 2
+        assert recorder._events[0].positions is None
+
+    def test_add_event_separates_normal_and_drag_moves(self):
+        recorder = Recorder("/tmp/test", compress=True)
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.0
+        recorder._screen_w = 1920
+        recorder._screen_h = 1080
+
+        e1 = Event(type="mouse", action="move", delay_ms=500, pos=[0.1, 0.1])
+        recorder._add_event(e1)
+
+        recorder._drag_button = "left"
+        recorder._move_is_drag = False
+
+        e2 = Event(type="mouse", action="move", delay_ms=12, pos=[0.2, 0.2])
+        recorder._add_event(e2)
+        assert len(recorder._events) == 1
+        assert len(recorder._move_buffer) == 1
+
+    def test_no_compress_skips_buffer(self):
+        recorder = Recorder("/tmp/test", compress=False)
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.0
+
+        e1 = Event(type="mouse", action="move", delay_ms=500, pos=[0.1, 0.1])
+        e2 = Event(type="mouse", action="move", delay_ms=200, pos=[0.2, 0.2])
+        recorder._add_event(e1)
+        recorder._add_event(e2)
+        assert len(recorder._events) == 2
+        assert len(recorder._move_buffer) == 0
+
+    def test_flush_move_buffer_on_stop(self):
+        recorder = Recorder("/tmp/test", compress=True)
+        recorder._start_time = 1000.0
+        recorder._last_event_time = 1000.0
+        recorder._screen_w = 1920
+        recorder._screen_h = 1080
+
+        e1 = Event(type="mouse", action="move", delay_ms=500, pos=[0.1, 0.1])
+        recorder._add_event(e1)
+        assert len(recorder._move_buffer) == 1
+        assert len(recorder._events) == 0
+
+        recorder._flush_move_buffer()
+        assert len(recorder._move_buffer) == 0
+        assert len(recorder._events) == 1
+        assert recorder._events[0].positions is None

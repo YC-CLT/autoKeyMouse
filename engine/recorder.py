@@ -22,6 +22,7 @@ class Recorder:
         move_interval: int = MOUSE_MOVE_INTERVAL_MS,
         shot_radius: int = SHOT_RADIUS,
         no_shot: bool = False,
+        compress: bool = True,
     ):
         self._output_dir = output_dir
         self._events: list[Event] = []
@@ -41,10 +42,45 @@ class Recorder:
         self._drag_button: Optional[str] = None
         self._drag_start_time = 0.0
         self._drag_move_count = 0
+        self._compress = compress
+        self._move_buffer: list[Event] = []
+        self._move_is_drag: bool = False
 
     def _build_output_dir(self):
         os.makedirs(self._output_dir, exist_ok=True)
         os.makedirs(os.path.join(self._output_dir, "shots"), exist_ok=True)
+
+    def _add_event(self, event: Event):
+        if self._compress and event.type == "mouse" and event.action == "move":
+            is_drag = self._drag_button is not None
+            if self._move_buffer and self._move_is_drag != is_drag:
+                self._flush_move_buffer()
+            self._move_buffer.append(event)
+            self._move_is_drag = is_drag
+        else:
+            self._flush_move_buffer()
+            self._events.append(event)
+
+    def _flush_move_buffer(self):
+        if not self._move_buffer:
+            return
+        if len(self._move_buffer) == 1:
+            self._events.append(self._move_buffer[0])
+        else:
+            positions = [e.pos for e in self._move_buffer]
+            if self._move_is_drag:
+                delays = [e.delay_ms for e in self._move_buffer[1:]]
+            else:
+                delays = None
+            self._events.append(Event(
+                type="mouse",
+                action="move",
+                delay_ms=self._move_buffer[0].delay_ms,
+                pos=self._move_buffer[0].pos,
+                positions=positions,
+                delays=delays,
+            ))
+        self._move_buffer.clear()
 
     def _relative_pos(
         self, x: float, y: float, screen_w: int, screen_h: int
@@ -74,7 +110,7 @@ class Recorder:
             key=data["key"],
             keycode=data["keycode"],
         )
-        self._events.append(event)
+        self._add_event(event)
 
     def _on_mouse_callback(self, data: dict):
         now = time.time()
@@ -94,7 +130,7 @@ class Recorder:
                     delay_ms=delay_ms,
                     pos=rel_pos,
                 )
-                self._events.append(event)
+                self._add_event(event)
                 self._drag_move_count += 1
                 return
             else:
@@ -164,7 +200,7 @@ class Recorder:
                 shot=shot,
             )
 
-        self._events.append(event)
+        self._add_event(event)
 
     def start(self):
         self._build_output_dir()
@@ -196,6 +232,7 @@ class Recorder:
         return self._running
 
     def _build_script(self) -> Script:
+        self._flush_move_buffer()
         duration_ms = int((self._last_event_time - self._start_time) * 1000)
         meta = Meta(
             created=time.strftime("%Y-%m-%d %H:%M:%S"),
