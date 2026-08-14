@@ -30,24 +30,42 @@ def print_event_list(events: list[Event]) -> None:
     table.add_column("Delay (ms)", style="yellow")
     table.add_column("Details", style="white")
 
-    for i, event in enumerate(events):
-        details = ""
-        if event.type == "key":
-            details = f"key={event.key} keycode={event.keycode}"
-        elif event.type == "mouse":
-            details = f"pos={event.pos}"
-            if event.shot:
-                details += f" shot={event.shot}"
-        elif event.type == "text":
-            details = f"text={event.text}"
+    i = 0
+    while i < len(events):
+        event = events[i]
 
-        table.add_row(
-            str(i),
-            event.type,
-            event.action,
-            str(event.delay_ms),
-            details,
-        )
+        if event.type == "mouse" and event.action == "move":
+            start = i
+            start_event = event
+            total_delay = event.delay_ms
+            i += 1
+            while i < len(events) and events[i].type == "mouse" and events[i].action == "move":
+                total_delay += events[i].delay_ms
+                i += 1
+            end = i - 1
+            end_event = events[end]
+
+            if start == end:
+                label = str(start)
+                details = f"pos={start_event.pos}"
+            else:
+                label = f"{start}-{end}"
+                details = f"x{end - start + 1}  {start_event.pos} → {end_event.pos}"
+
+            table.add_row(label, "mouse", "move", str(total_delay), details)
+        else:
+            details = ""
+            if event.type == "key":
+                details = f"key={event.key} keycode={event.keycode}"
+            elif event.type == "mouse":
+                details = f"pos={event.pos}"
+                if event.shot:
+                    details += f" shot={event.shot}"
+            elif event.type == "text":
+                details = f"text={event.text}"
+
+            table.add_row(str(i), event.type, event.action, str(event.delay_ms), details)
+            i += 1
 
     console.print(table)
 
