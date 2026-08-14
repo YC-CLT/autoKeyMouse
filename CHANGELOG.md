@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-08-13 — 鼠标拖拽支持
+
+### 新增
+
+- **config.py**: `DRAG_THRESHOLD_MS = 300` — 按住多久判定为拖拽
+- **engine/recorder.py**: `_on_mouse_callback` 重写拖拽逻辑
+  - `left_down` 记录 `_drag_button` / `_drag_start_time` / `_drag_move_count`
+  - `move` 分两路：拖拽中全量记录（不节流、不截图），普通移动仍节流 200ms
+  - `left_up` 区分拖拽终点（有截图）vs 普通点击（不截图）
+  - 浮点精度修复：`int(round(...))` 替代 `int()` 避免 `0.3 * 1000 = 299.999...`
+
+### 测试
+
+- 111 tests passed (104 原有 + 7 新增 `tests/test_recorder_drag.py`)
+
+---
+
 ## 2026-08-13 — KeymouseGo 参考项目调研
 
 ### 调研
