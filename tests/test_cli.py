@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from config import SHOT_RADIUS, MOUSE_MOVE_INTERVAL_MS
 from cli.commands import (
     handle_inspect,
     handle_list,
@@ -65,8 +66,8 @@ class TestRecordDefaults:
         args = parser.parse_args(["record"])
         assert args.output is None
         assert args.record_move is True
-        assert args.move_interval == 200
-        assert args.shot_radius == 50
+        assert args.move_interval == MOUSE_MOVE_INTERVAL_MS
+        assert args.shot_radius == SHOT_RADIUS
         assert args.no_shot is False
 
     def test_record_custom_options(self):

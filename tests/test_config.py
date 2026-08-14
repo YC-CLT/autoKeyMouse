@@ -20,15 +20,6 @@ class TestConfigConstants:
     def test_shot_radius_range(self):
         assert config.SHOT_RADIUS > 0
 
-    def test_shot_format_exists(self):
-        assert hasattr(config, "SHOT_FORMAT")
-
-    def test_shot_format_type(self):
-        assert isinstance(config.SHOT_FORMAT, str)
-
-    def test_shot_format_value(self):
-        assert config.SHOT_FORMAT == "PNG"
-
     def test_match_confidence_exists(self):
         assert hasattr(config, "MATCH_CONFIDENCE")
 

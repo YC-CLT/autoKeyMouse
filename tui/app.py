@@ -21,6 +21,7 @@ from engine.logger import setup_logging, get_logger
 from engine.player import Player
 from engine.recorder import Recorder
 from engine.script import load, save
+from config import SHOT_RADIUS, MOUSE_MOVE_INTERVAL_MS
 
 _log = get_logger("tui.app")
 
@@ -64,9 +65,23 @@ def _tui_record() -> None:
         output_dir = Prompt.ask("Output directory", default=_default_output_dir())
 
     no_shot = Prompt.ask("Disable screenshots?", choices=["y", "n"], default="n")
-    shot_radius = 0 if no_shot == "y" else 50
+    shot_radius = 0 if no_shot == "y" else SHOT_RADIUS
 
-    recorder = Recorder(output_dir=output_dir, shot_radius=shot_radius)
+    record_move = Prompt.ask("Record mouse movement?", choices=["y", "n"], default="y")
+    move_interval = MOUSE_MOVE_INTERVAL_MS
+    if record_move == "y":
+        interval_str = Prompt.ask("Move interval (ms)", default=str(MOUSE_MOVE_INTERVAL_MS))
+        try:
+            move_interval = int(interval_str)
+        except ValueError:
+            move_interval = MOUSE_MOVE_INTERVAL_MS
+
+    recorder = Recorder(
+        output_dir=output_dir,
+        shot_radius=shot_radius,
+        record_move=record_move == "y",
+        move_interval=move_interval,
+    )
 
     _log.info("TUI record: output=%s", output_dir)
     print_recording_start()
@@ -185,6 +200,7 @@ def _tui_inspect() -> None:
     try:
         script = load(script_dir)
         print_summary(script)
+        print_event_list(script)
     except Exception as e:
         console.print(f"[red]Error loading script: {e}[/red]")
 

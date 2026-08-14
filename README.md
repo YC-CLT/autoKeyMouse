@@ -96,8 +96,7 @@ All constants in [config.py](config.py):
 | Constant | Default | Description |
 |----------|---------|-------------|
 | `STOP_HOTKEY` | `"f9"` | Global stop hotkey |
-| `SHOT_RADIUS` | `100` | Screenshot crop radius (px) |
-| `SHOT_FORMAT` | `"PNG"` | Screenshot format |
+| `SHOT_RADIUS` | `192` | Screenshot crop radius (px) |
 | `MATCH_CONFIDENCE` | `0.85` | NCC confidence threshold |
 | `MATCH_SEARCH_RADIUS` | `100` | Search ROI radius (px) |
 | `MOUSE_MOVE_INTERVAL_MS` | `200` | Min interval between move events (ms) |
@@ -225,7 +224,7 @@ uv run autokeymouse tui
 | 常量 | 默认值 | 说明 |
 |------|--------|------|
 | `STOP_HOTKEY` | `"f9"` | 全局停止热键 |
-| `SHOT_RADIUS` | `100` | 截图裁剪半径（像素） |
+| `SHOT_RADIUS` | `192` | 截图裁剪半径（像素） |
 | `SHOT_FORMAT` | `"PNG"` | 截图格式 |
 | `MATCH_CONFIDENCE` | `0.85` | NCC 匹配置信度阈值 |
 | `MATCH_SEARCH_RADIUS` | `100` | 搜索区域半径（像素） |

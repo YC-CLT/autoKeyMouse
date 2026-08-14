@@ -15,6 +15,7 @@ from engine.player import Player
 from engine.recorder import Recorder
 from engine.script import Event, Script, load, save
 from engine.logger import get_logger
+from config import SHOT_RADIUS, MOUSE_MOVE_INTERVAL_MS
 
 _log = get_logger("cli.commands")
 
@@ -30,12 +31,12 @@ def register_commands(subparsers) -> None:
         help="Disable recording mouse movement",
     )
     record_parser.add_argument(
-        "--move-interval", type=int, default=200,
-        help="Minimum interval between mouse move events in ms (default: 200)",
+        "--move-interval", type=int, default=MOUSE_MOVE_INTERVAL_MS,
+        help=f"Minimum interval between mouse move events in ms (default: {MOUSE_MOVE_INTERVAL_MS})",
     )
     record_parser.add_argument(
-        "--shot-radius", type=int, default=50,
-        help="Screenshot crop radius in pixels (default: 50)",
+        "--shot-radius", type=int, default=SHOT_RADIUS,
+        help=f"Screenshot crop radius in pixels (default: {SHOT_RADIUS})",
     )
     record_parser.add_argument(
         "--no-shot", action="store_true", default=False,

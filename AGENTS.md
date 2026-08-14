@@ -33,12 +33,11 @@
 | 常量 | 默认值 | 说明 |
 |------|--------|------|
 | `STOP_HOTKEY` | `"f9"` | 全局停止热键 |
-| `SHOT_RADIUS` | `50` | 截图裁剪半径 (px) |
+| `SHOT_RADIUS` | `192` | 截图裁剪半径 (px) |
 | `MATCH_CONFIDENCE` | `0.85` | NCC 置信度阈值 |
 | `MATCH_SEARCH_RADIUS` | `100` | 搜索 ROI 半径 (px) |
 | `MOUSE_MOVE_INTERVAL_MS` | `200` | 鼠标移动事件最小间隔 |
 | `DRAG_THRESHOLD_MS` | `300` | 按住多久判定为拖拽 |
-| `SHOT_FORMAT` | `"PNG"` | 截图格式 |
 
 ## 规则
 
@@ -69,6 +68,7 @@
 - **浮点时间比较需 `round()`**：`int((now - start) * 1000)` 在 `0.3 * 1000` 时产生 `299.999...` 而非 `300`，`int()` 截断导致 off-by-one。用 `int(round(...))` 修复
 - **小模板全屏匹配假阳性**：100×100 模板在 1920×1200 屏幕上的 FFT NCC 全屏搜索容易找到高置信度但完全错误的匹配。模板匹配应默认关闭，仅作实验功能
 - **Rich 反斜杠导致标记泄漏**：f-string 中文件路径末尾 `\` 会被 Rich 解析为转义 `\[`，使闭合标签 `[/bold cyan]` 变成纯文本。用 `rich.markup.escape()` 包裹用户输入
+- **CLI/TUI default 值不要硬编码**：`argparse` 的 `default=` 和 TUI 的 `Prompt.ask(default=)` 必须从 `config.py` 导入常量，否则改 config 值后这些地方不同步
 
 ## 工作流
 

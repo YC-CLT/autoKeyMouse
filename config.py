@@ -1,7 +1,6 @@
 STOP_HOTKEY = "f9" # 全局停止键
 
-SHOT_RADIUS = 100 # 截图半径
-SHOT_FORMAT = "PNG" # 截图格式
+SHOT_RADIUS = 192 # 截图半径
 
 MOUSE_MOVE_INTERVAL_MS = 200 # 鼠标移动间隔
 DRAG_THRESHOLD_MS = 300 # 拖拽阈值，按住多久判定拖拽

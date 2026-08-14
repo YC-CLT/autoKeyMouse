@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-08-14 — 硬编码消除 + 配置统一
+
+### 改动
+
+- **cli/commands.py**: `--shot-radius`/`--move-interval` 默认值从硬编码改为从 `config.py` 导入
+- **tui/app.py**: `shot_radius` 从 `50` 改为 `SHOT_RADIUS`；新增 `record_move`/`move_interval` 交互选项；inspect 增加事件列表展示
+- **config.py**: 移除未使用的 `SHOT_FORMAT`
+- **tests/test_cli.py**: 默认值断言从硬编码改为引用 config 常量
+- **README.md/AGENTS.md**: 同步 `SHOT_RADIUS=192`，移除 `SHOT_FORMAT`
+
+---
+
 ## 2026-08-14 — 匹配默认关闭 + 显示修复
 
 ### 改动
