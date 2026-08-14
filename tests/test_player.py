@@ -68,7 +68,7 @@ class TestPlayerInit:
             player = Player(tmpdir)
             assert player._times == 1
             assert player._speed == 1.0
-            assert player._use_match is True
+            assert player._use_match is False
             assert player._script is not None
             assert len(player._script.events) == 2
 

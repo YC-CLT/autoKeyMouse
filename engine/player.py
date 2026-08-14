@@ -35,7 +35,7 @@ class Player:
         script_dir: str,
         times: int = 1,
         speed: float = 1.0,
-        use_match: bool = True,
+        use_match: bool = False,
     ):
         self._script = load(script_dir)
         self._script_dir = script_dir

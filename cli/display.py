@@ -1,4 +1,5 @@
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import Progress
 from rich.table import Table
@@ -74,7 +75,7 @@ def print_recording_done(script: Script) -> None:
 
 def print_playback_start(script_name: str, times: int) -> None:
     console.print(Panel.fit(
-        f"[bold cyan]Playing: {script_name}[/bold cyan] x{times}\n"
+        f"[bold cyan]Playing: {escape(script_name)}[/bold cyan] x{times}\n"
         f"Press [bold red]F9[/bold red] to stop.",
         title="autokeymouse",
     ))

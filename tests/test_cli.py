@@ -95,7 +95,7 @@ class TestPlayDefaults:
         assert args.script == "test_script"
         assert args.times == 1
         assert args.speed == 1.0
-        assert args.nomatch is False
+        assert args.match is False
 
     def test_play_custom_options(self):
         parser = argparse.ArgumentParser()
@@ -103,11 +103,11 @@ class TestPlayDefaults:
         register_commands(subparsers)
 
         args = parser.parse_args([
-            "play", "test_script", "--times", "5", "--speed", "2.0", "--nomatch",
+            "play", "test_script", "--times", "5", "--speed", "2.0", "--match",
         ])
         assert args.times == 5
         assert args.speed == 2.0
-        assert args.nomatch is True
+        assert args.match is True
 
 
 class TestListDefaults:

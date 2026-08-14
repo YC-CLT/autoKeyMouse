@@ -115,7 +115,7 @@ def _tui_play() -> None:
     except ValueError:
         speed = 1.0
 
-    use_match = Prompt.ask("Use template matching?", choices=["y", "n"], default="y")
+    use_match = Prompt.ask("Use template matching? [EXPERIMENTAL]", choices=["y", "n"], default="n")
 
     _log.info("TUI play: script=%s", script_dir)
     print_playback_start(script_name, times)

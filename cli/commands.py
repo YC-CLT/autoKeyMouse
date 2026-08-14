@@ -53,8 +53,8 @@ def register_commands(subparsers) -> None:
         help="Playback speed multiplier (default: 1.0)",
     )
     play_parser.add_argument(
-        "--nomatch", action="store_true", default=False,
-        help="Disable template matching and Kalman filtering",
+        "--match", action="store_true", default=False,
+        help="[EXPERIMENTAL] Enable template matching (unreliable, for debugging only)",
     )
 
     list_parser = subparsers.add_parser("list", help="List recorded scripts")
@@ -106,14 +106,22 @@ def handle_record(args) -> int:
 def handle_play(args) -> int:
     script_dir = args.script
     _log.info("Command: play script=%s times=%d speed=%.1f match=%s",
-              script_dir, args.times, args.speed, not args.nomatch)
+              script_dir, args.times, args.speed, args.match)
+
+    if args.match:
+        from rich.console import Console
+        Console().print(
+            "[bold yellow]WARNING:[/bold yellow] Template matching is [bold red]EXPERIMENTAL[/bold red] and unreliable. "
+            "Use at your own risk.",
+        )
+
     print_playback_start(script_dir, args.times)
 
     player = Player(
         script_dir=script_dir,
         times=args.times,
         speed=args.speed,
-        use_match=not args.nomatch,
+        use_match=args.match,
     )
 
     result = player.play()

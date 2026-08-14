@@ -67,6 +67,8 @@
 - **日志 handler 锁文件 + 全局状态污染**：`TimedRotatingFileHandler` 在 Windows 上持有日志文件句柄，`TemporaryDirectory` 清理时抛 `PermissionError`。`setup_logging()` 的 `_setup_done` 标志在测试间会污染。测试中需 `_reset_setup()` 关闭 handler 并重置标志，且在 `with` 块内调用
 - **三档递进搜索策略**：原始+offset → 原始坐标 → 全屏 → 兜底，逐级降级确保不因单点匹配失败而整体回放中断
 - **浮点时间比较需 `round()`**：`int((now - start) * 1000)` 在 `0.3 * 1000` 时产生 `299.999...` 而非 `300`，`int()` 截断导致 off-by-one。用 `int(round(...))` 修复
+- **小模板全屏匹配假阳性**：100×100 模板在 1920×1200 屏幕上的 FFT NCC 全屏搜索容易找到高置信度但完全错误的匹配。模板匹配应默认关闭，仅作实验功能
+- **Rich 反斜杠导致标记泄漏**：f-string 中文件路径末尾 `\` 会被 Rich 解析为转义 `\[`，使闭合标签 `[/bold cyan]` 变成纯文本。用 `rich.markup.escape()` 包裹用户输入
 
 ## 工作流
 

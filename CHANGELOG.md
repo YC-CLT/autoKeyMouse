@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 2026-08-14 — 匹配默认关闭 + 显示修复
+
+### 改动
+
+- **engine/player.py**: `use_match` 默认 `True` → `False`，回放默认纯坐标
+- **cli/commands.py**: `--nomatch` → `--match`（opt-in），开启时打印实验功能警告
+- **cli/display.py**: `script_name` 用 `rich.markup.escape()` 防反斜杠导致标记泄漏
+- **tui/app.py**: 匹配开关默认 `n`，标注 `[EXPERIMENTAL]`
+- **tests/test_cli.py/test_player.py**: 默认值断言同步更新
+
+### 原因
+
+- 模板匹配（FFT NCC）在 100×100 小模板 + 1920×1200 屏幕上容易假阳性
+- 全屏搜索回退曾将 `left_up` 匹配到完全错误的位置 `(1293,865)`（正确为 `(1570,0)`）
+- 匹配功能降级为实验功能，默认关闭
+
+---
+
 ## 2026-08-13 — 鼠标拖拽支持
 
 ### 新增
