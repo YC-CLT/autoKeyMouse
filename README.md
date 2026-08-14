@@ -2,7 +2,7 @@
 
 [English](#english) | [中文](#中文)
 
-Keyboard/mouse recording and playback tool for Windows — with screenshot-anchored template matching and Kalman-filtered positioning.
+Keyboard/mouse recording and playback tool for Windows — with optional screenshot-anchored positioning.
 
 ---
 
@@ -10,10 +10,11 @@ Keyboard/mouse recording and playback tool for Windows — with screenshot-ancho
 
 ## Features
 
-- **Record** keyboard, mouse clicks, and wheel events (optional mouse movement)
+- **Record** keyboard, mouse clicks, wheel events, and drag (mouse movement by default)
 - **Playback** with speed control, loop count, and F9 emergency stop
-- **Template matching** — screenshot-anchored replay via FFT-based NCC (no OpenCV needed)
-- **Kalman filter** — smooths target position, handles transient mismatches
+- **Drag support** — click-and-drag is recorded and replayed as a continuous sequence
+- **Offset tracking** — window-moved detection via visual offset correction
+- **Template matching** — (EXPERIMENTAL) FFT-based NCC screenshot-anchored positioning
 - **TUI** — interactive terminal UI with Rich
 - **CLI** — full argparse subcommands for scripting
 
@@ -25,7 +26,6 @@ Keyboard/mouse recording and playback tool for Windows — with screenshot-ancho
 ## Installation
 
 ```bash
-# Install from local source (editable)
 git clone https://github.com/YC-CLT/autokeymouse.git
 cd autokeymouse
 uv tool install -e .
@@ -38,26 +38,29 @@ uv run autokeymouse --help
 ## Quick Start
 
 ```bash
-# Record keystrokes and mouse clicks (default: no mouse movement)
+# Record (mouse movement enabled by default)
 uv run autokeymouse record
 
-# Record with mouse movement
-uv run autokeymouse record --record-move
+# Record without mouse movement
+uv run autokeymouse record --no-record-move
 
 # Record to a custom directory
 uv run autokeymouse record -o my_script
 
 # Play back a recorded script
-uv run autokeymouse play scripts/2026-08-13_1430
+uv run autokeymouse play scripts/2026-08-14_1624
 
-# Play back 5 times at 2x speed, no template matching
-uv run autokeymouse play scripts/2026-08-13_1430 -n 5 -s 2.0 --nomatch
+# Play back 5 times at 2x speed
+uv run autokeymouse play scripts/2026-08-14_1624 -n 5 -s 2.0
+
+# Play back with experimental template matching
+uv run autokeymouse play scripts/2026-08-14_1624 --match
 
 # List recorded scripts
 uv run autokeymouse list
 
 # Inspect a script
-uv run autokeymouse inspect scripts/2026-08-13_1430
+uv run autokeymouse inspect scripts/2026-08-14_1624
 
 # Launch interactive TUI
 uv run autokeymouse tui
@@ -67,27 +70,24 @@ uv run autokeymouse tui
 
 ### Recording
 
-1. `F9` or `Ctrl+C` to start recording
+1. `F9` to stop recording
 2. All key down/up events are captured via pyWinhook
-3. Mouse clicks trigger a screenshot (50px radius crop) saved to `shots/NNNN.png`
+3. Mouse clicks trigger a screenshot (100px radius crop) saved to `shots/NNNN.png`
 4. Coordinates are stored as relative values [0~1] for resolution-independent playback
-5. Script saved as `script.json` in the output directory
+5. Mouse movement is recorded by default (use `--no-record-move` to disable)
+6. Drag (click-hold-move-release) is detected by hold duration > 300ms, moves recorded at full rate
+7. Script saved as `script.json` in the output directory
 
 ### Playback
 
 1. Script is loaded from `script.json`
-2. For each mouse event with a screenshot, template matching locates the target on screen
-3. Kalman filter smooths the position across consecutive frames
-4. If matching fails, falls back to the last predicted position
-5. `F9` stops playback at any time
+2. All events replay at original recorded coordinates (resolution-independent)
+3. If `--match` is enabled, template matching attempts to locate the target on screen and corrects the position via a global offset
+4. `F9` stops playback at any time
 
-### Template Matching
+### Template Matching (EXPERIMENTAL)
 
-Pure numpy FFT-based normalized cross-correlation (NCC), no OpenCV dependency. Searches within a radius around the expected position for efficiency.
-
-### Kalman Filter
-
-A 2D static-target Kalman filter: `predict()` increments uncertainty, `update()` fuses a measurement. If no match for 5 consecutive frames, the filter is considered stale.
+FFT-based normalized cross-correlation (NCC) with pure numpy, no OpenCV dependency. Three-tier fallback: offset prediction → original position → full-screen search → raw coordinate. **Currently unreliable for small (100px) templates on large screens** — disabled by default. Use `--match` to enable at your own risk.
 
 ## Configuration
 
@@ -96,17 +96,16 @@ All constants in [config.py](config.py):
 | Constant | Default | Description |
 |----------|---------|-------------|
 | `STOP_HOTKEY` | `"f9"` | Global stop hotkey |
-| `SHOT_RADIUS` | `50` | Screenshot crop radius (px) |
+| `SHOT_RADIUS` | `100` | Screenshot crop radius (px) |
+| `SHOT_FORMAT` | `"PNG"` | Screenshot format |
 | `MATCH_CONFIDENCE` | `0.85` | NCC confidence threshold |
 | `MATCH_SEARCH_RADIUS` | `100` | Search ROI radius (px) |
-| `KALMAN_PROCESS_NOISE` | `1e-2` | Kalman process noise |
-| `KALMAN_MEASURE_NOISE` | `1e-1` | Kalman measurement noise |
-| `KALMAN_MAX_CONSECUTIVE_MISS` | `5` | Max misses before stale |
-| `MOUSE_MOVE_INTERVAL_MS` | `200` | Min interval between move events |
+| `MOUSE_MOVE_INTERVAL_MS` | `200` | Min interval between move events (ms) |
+| `DRAG_THRESHOLD_MS` | `300` | Hold duration to trigger drag (ms) |
 
 ## Project Structure
 
-```bash
+```
 autokeymouse/
 ├── main.py              # CLI entry point
 ├── config.py            # All configuration constants
@@ -114,8 +113,8 @@ autokeymouse/
 │   ├── script.py        # Event/Script model + save/load/validate
 │   ├── capture.py       # Screenshot capture
 │   ├── matcher.py       # FFT NCC template matching
-│   ├── kalman.py        # 2D Kalman filter
 │   ├── hooks.py         # pyWinhook hook manager
+│   ├── logger.py        # Project-level logging (daily rotation)
 │   ├── recorder.py      # Recording orchestrator
 │   └── player.py        # Playback orchestrator
 ├── cli/                 # CLI layer
@@ -136,14 +135,15 @@ MIT
 
 ## 中文
 
-Windows 键盘鼠标录制回放工具 — 基于截图锚定的模板匹配 + 卡尔曼滤波定位。
+Windows 键盘鼠标录制回放工具 — 支持可选截图锚定定位。
 
 ## 功能特性
 
-- **录制** 键盘、鼠标点击和滚轮事件（可选录制鼠标移动）
+- **录制** 键盘、鼠标点击、滚轮和拖拽事件（默认录制鼠标移动）
 - **回放** 支持速度控制、循环次数、F9 紧急停止
-- **模板匹配** — 基于 FFT 的 NCC 截图锚定回放（无需 OpenCV）
-- **卡尔曼滤波** — 平滑目标位置，容忍短暂匹配失败
+- **拖拽支持** — 点击拖拽操作录制为连续序列并完整回放
+- **偏移追踪** — 窗口移动检测，通过视觉偏移修正定位
+- **模板匹配** — （实验功能）基于 FFT 的 NCC 截图锚定定位
 - **TUI** — 基于 Rich 的交互式终端界面
 - **CLI** — 完整的 argparse 子命令，支持脚本化
 
@@ -155,7 +155,6 @@ Windows 键盘鼠标录制回放工具 — 基于截图锚定的模板匹配 + �
 ## 安装
 
 ```bash
-# 从本地源码安装（可编辑模式）
 git clone https://github.com/YC-CLT/autokeymouse.git
 cd autokeymouse
 uv tool install -e .
@@ -168,26 +167,29 @@ uv run autokeymouse --help
 ## 快速上手
 
 ```bash
-# 录制键盘和鼠标点击（默认不录制鼠标移动）
+# 录制（默认开启鼠标移动录制）
 uv run autokeymouse record
 
-# 录制鼠标移动
-uv run autokeymouse record --record-move
+# 录制但不录鼠标移动
+uv run autokeymouse record --no-record-move
 
 # 录制到自定义目录
 uv run autokeymouse record -o my_script
 
 # 回放已录制的脚本
-uv run autokeymouse play scripts/2026-08-13_1430
+uv run autokeymouse play scripts/2026-08-14_1624
 
-# 以 2 倍速循环播放 5 次，关闭模板匹配
-uv run autokeymouse play scripts/2026-08-13_1430 -n 5 -s 2.0 --nomatch
+# 以 2 倍速循环播放 5 次
+uv run autokeymouse play scripts/2026-08-14_1624 -n 5 -s 2.0
+
+# 开启实验性模板匹配
+uv run autokeymouse play scripts/2026-08-14_1624 --match
 
 # 列出已录制脚本
 uv run autokeymouse list
 
 # 查看脚本详情
-uv run autokeymouse inspect scripts/2026-08-13_1430
+uv run autokeymouse inspect scripts/2026-08-14_1624
 
 # 启动交互式 TUI
 uv run autokeymouse tui
@@ -197,46 +199,42 @@ uv run autokeymouse tui
 
 ### 录制
 
-1. `F9` 或 `Ctrl+C` 停止录制
+1. `F9` 停止录制
 2. 通过 pyWinhook 捕获所有按键按下/释放事件
-3. 鼠标点击时触发截图（50px 半径裁剪），保存到 `shots/NNNN.png`
+3. 鼠标点击时触发截图（100px 半径裁剪），保存到 `shots/NNNN.png`
 4. 坐标存储为相对值 [0~1]，保证不同分辨率下回放一致
-5. 脚本保存为输出目录下的 `script.json`
+5. 鼠标移动默认录制（用 `--no-record-move` 关闭）
+6. 拖拽（按住超过 300ms 后移动）全量记录移动轨迹，不节流
+7. 脚本保存为输出目录下的 `script.json`
 
 ### 回放
 
 1. 从 `script.json` 加载脚本
-2. 对每个带截图的鼠标事件，用模板匹配在屏幕上定位目标
-3. 卡尔曼滤波平滑连续帧之间的位置
-4. 匹配失败时回退到上一次预测位置
-5. `F9` 随时停止回放
+2. 所有事件按原始录制坐标回放（分辨率无关）
+3. 若开启 `--match`，模板匹配尝试在屏幕上定位目标，通过全局偏移量修正位置
+4. `F9` 随时停止回放
 
-### 模板匹配
+### 模板匹配（实验功能）
 
-纯 numpy 实现的 FFT 归一化互相关（NCC），无 OpenCV 依赖。在预期位置附近的搜索半径内高效匹配。
-
-### 卡尔曼滤波
-
-二维静态目标卡尔曼滤波：`predict()` 增加不确定性，`update()` 融合观测值。连续 5 帧匹配失败则判定为失效。
+纯 numpy 实现的 FFT 归一化互相关（NCC），无 OpenCV 依赖。三档递进搜索：偏移预测 → 原始坐标 → 全屏搜索 → 原始坐标兜底。**目前在小模板（100px）大屏幕上不够可靠**，默认关闭。用 `--match` 开启，风险自负。
 
 ## 配置项
 
 所有常量在 [config.py](config.py) 中：
 
 | 常量 | 默认值 | 说明 |
-|----------|---------|-------------|
+|------|--------|------|
 | `STOP_HOTKEY` | `"f9"` | 全局停止热键 |
-| `SHOT_RADIUS` | `50` | 截图裁剪半径（像素） |
+| `SHOT_RADIUS` | `100` | 截图裁剪半径（像素） |
+| `SHOT_FORMAT` | `"PNG"` | 截图格式 |
 | `MATCH_CONFIDENCE` | `0.85` | NCC 匹配置信度阈值 |
 | `MATCH_SEARCH_RADIUS` | `100` | 搜索区域半径（像素） |
-| `KALMAN_PROCESS_NOISE` | `1e-2` | 卡尔曼过程噪声 |
-| `KALMAN_MEASURE_NOISE` | `1e-1` | 卡尔曼观测噪声 |
-| `KALMAN_MAX_CONSECUTIVE_MISS` | `5` | 连续匹配失败阈值 |
 | `MOUSE_MOVE_INTERVAL_MS` | `200` | 鼠标移动事件最小间隔（毫秒） |
+| `DRAG_THRESHOLD_MS` | `300` | 按住多久判定为拖拽（毫秒） |
 
 ## 项目结构
 
-```bash
+```
 autokeymouse/
 ├── main.py              # CLI 入口
 ├── config.py            # 所有配置常量
@@ -244,8 +242,8 @@ autokeymouse/
 │   ├── script.py        # Event/Script 模型 + 保存/加载/校验
 │   ├── capture.py       # 截图捕获
 │   ├── matcher.py       # FFT NCC 模板匹配
-│   ├── kalman.py        # 二维卡尔曼滤波
 │   ├── hooks.py         # pyWinhook 钩子管理
+│   ├── logger.py        # 项目级日志（按日轮转）
 │   ├── recorder.py      # 录制调度器
 │   └── player.py        # 回放调度器
 ├── cli/                 # CLI 层
