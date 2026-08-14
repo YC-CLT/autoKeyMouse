@@ -200,7 +200,7 @@ def _tui_inspect() -> None:
     try:
         script = load(script_dir)
         print_summary(script)
-        print_event_list(script)
+        print_event_list(script.events)
     except Exception as e:
         console.print(f"[red]Error loading script: {e}[/red]")
 
