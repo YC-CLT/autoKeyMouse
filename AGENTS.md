@@ -54,7 +54,7 @@
 - 搜索通用知识/技术方案用 `WebSearch`；抓取特定网页完整内容用 `wet-mcp` 的 `extract`
 - `wet-mcp extract` 可下载文件/抓取页面媒体组件
 - `Read` 无法访问 `D:\Temp`，MCP 长输出需 `Copy-Item` 到项目根目录，正则替换 `\\n` 为 `\n`
-- `write` 不支持 `replace_all`，用正则替换
+- **Edit `replace_all` 过度匹配**：`replace_all=True` 在文件中全局替换，可能意外修改不相关的方法体。优先用 PowerShell `Select-String` + 正则做精确替换，或手动逐处 Edit
 
 ## 经验/坑点
 
@@ -83,3 +83,4 @@
 5. 验证：调用 verification-before-completion → 跑验证命令确认完成
 6. 记录：调用 writing-agents → 写CHANGELOG.md + 经验教训到AGENTS.md
 7. 提交：调用 finishing-a-development-branch → 分组提交
+8. 

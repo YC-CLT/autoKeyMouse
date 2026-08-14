@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## 2026-08-14 — 移动事件压缩
+
+### 改动
+
+- **engine/script.py**: Event 新增 `positions`/`delays` 字段，`save()`/`load()` 仅非 None 时序列化
+- **engine/recorder.py**: 新增 `_move_buffer` 缓冲连续 move 事件，`_flush_move_buffer()` 合并为压缩事件
+  - 普通 move → `positions` 数组，`delays` 为 None
+  - 拖拽 move → `positions` + `delays` 数组，保留原始时间间隔
+  - 拖拽与普通 move 不混合，缓冲区遇非 move 事件或类型切换时刷新
+  - `compress=False` 时关闭压缩，退化为逐事件记录
+- **engine/player.py**: `play()` 检测 `event.positions` 展开压缩事件
+  - 普通 move：首点 `delay_ms` + 后续点 `MOUSE_MOVE_INTERVAL_MS`
+  - 拖拽 move：首点 `delay_ms` + 后续点按 `delays[i]` 间隔
+  - 无 `positions` 字段的旧脚本回退到原有单事件逻辑
+  - 新增 `_pos_match_for_pos`/`_execute_mouse_event_at` 辅助方法
+- **cli/commands.py**: `record` 子命令新增 `--no-compress` 参数
+- **tui/app.py**: 录制交互新增 `Compress move events? [y/n]` 选项
+- **cli/display.py**: `print_event_list` 连续 move 事件合并显示为一行 `xN 起点→终点`
+- **tests**: 新增 10 个测试（recorder 压缩 5 + player 解压 3 + CLI 2）
+
+### 原因
+
+- 录制脚本中连续鼠标移动占事件量 60%+，坐标相邻、时间间隔固定，冗余度高
+- 压缩后脚本体积显著减小，回放时展开逐点执行，用户无感知
+
+---
+
 ## 2026-08-14 — 硬编码消除 + 配置统一
 
 ### 改动
