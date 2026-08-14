@@ -89,6 +89,42 @@ class TestSaveLoad:
             save(s, tmpdir)
             assert os.path.exists(os.path.join(tmpdir, "script.json"))
 
+    def test_roundtrip_with_positions(self):
+        events = [
+            Event(type="mouse", action="move", delay_ms=534, pos=[0.53, 0.88],
+                  positions=[[0.53, 0.88], [0.54, 0.88], [0.55, 0.88]],
+                  delays=None),
+            Event(type="mouse", action="left_down", delay_ms=100, pos=[0.60, 0.60], shot="shots/0001.png"),
+            Event(type="mouse", action="move", delay_ms=12, pos=[0.50, 0.50],
+                  positions=[[0.50, 0.50], [0.51, 0.51], [0.52, 0.52]],
+                  delays=[12, 15]),
+            Event(type="mouse", action="left_up", delay_ms=50, pos=[0.52, 0.52]),
+        ]
+        meta = Meta(created="2026-08-14T10:00:00", screen=[1920, 1080], duration_ms=696, event_count=4)
+        s = Script(meta=meta, events=events)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            save(s, tmpdir)
+            loaded = load(tmpdir)
+            assert loaded.events[0].positions == [[0.53, 0.88], [0.54, 0.88], [0.55, 0.88]]
+            assert loaded.events[0].delays is None
+            assert loaded.events[2].positions == [[0.50, 0.50], [0.51, 0.51], [0.52, 0.52]]
+            assert loaded.events[2].delays == [12, 15]
+
+    def test_roundtrip_without_positions(self):
+        data = {
+            "version": 1,
+            "meta": {"created": "2026-08-14T10:00:00", "screen": [1920, 1080], "duration_ms": 100, "event_count": 1},
+            "events": [{"type": "mouse", "action": "move", "delay_ms": 534, "pos": [0.53, 0.88]}],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            script_path = os.path.join(tmpdir, "script.json")
+            with open(script_path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            loaded = load(tmpdir)
+            assert loaded.events[0].positions is None
+            assert loaded.events[0].delays is None
+
 
 class TestValidate:
     def test_valid_script_no_errors(self):

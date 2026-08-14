@@ -60,6 +60,8 @@ def load(dir_path: str) -> Script:
             keycode=ev_data.get("keycode"),
             text=ev_data.get("text"),
             shot=ev_data.get("shot"),
+            positions=ev_data.get("positions"),
+            delays=ev_data.get("delays"),
         )
         events.append(e)
 
@@ -87,6 +89,8 @@ def save(script: Script, dir_path: str) -> None:
                 "keycode": e.keycode,
                 "text": e.text,
                 "shot": e.shot,
+                **({"positions": e.positions} if e.positions is not None else {}),
+                **({"delays": e.delays} if e.delays is not None else {}),
             }
             for e in script.events
         ],
