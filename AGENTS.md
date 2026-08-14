@@ -3,7 +3,6 @@
 ## 环境
 
 - Python 3.11 + uv
-- **命令执行**：统一走 `cmd-exec-mcp`，必须先读 `./mcp_tools_summary.csv`
 
 ## 关键文件
 
@@ -15,6 +14,7 @@
 | `engine/capture.py` | PIL 截图 + 边缘裁剪 |
 | `engine/matcher.py` | FFT NCC 模板匹配 |
 | `engine/hooks.py` | pyWinhook 全局钩子封装 |
+| `engine/logger.py` | 项目级日志，按日轮转 |
 | `engine/recorder.py` | 录制调度器 |
 | `engine/player.py` | 回放调度器 |
 | `cli/commands.py` | 5 个子命令处理 (record/play/list/inspect/tui) |
@@ -37,37 +37,36 @@
 | `MATCH_CONFIDENCE` | `0.85` | NCC 置信度阈值 |
 | `MATCH_SEARCH_RADIUS` | `100` | 搜索 ROI 半径 (px) |
 | `MOUSE_MOVE_INTERVAL_MS` | `200` | 鼠标移动事件最小间隔 |
+| `DRAG_THRESHOLD_MS` | `300` | 按住多久判定为拖拽 |
+| `SHOT_FORMAT` | `"PNG"` | 截图格式 |
 
 ## 规则
 
+- **命令执行**：统一走 `cmd-exec-mcp`，必须先读 `./mcp_tools_summary.csv`
 - **config 重命名全量 grep**：常量改名/移除后，搜索所有引用点确保同步更新
-- 可并行的指令用 `parallel=True`
-- `wet-mcp extract` 可下载文件/抓取页面媒体组件
-- `Read` 无法访问 `D:\Temp`，MCP 长输出需 `Copy-Item` 到项目根目录，然后正则替换 `\\n` 为 `\n`，否则输出超长行
-- `write` 无法使用`replace_all`，使用正则替换
-- 搜索通用知识/技术方案用 `WebSearch`；需要抓取特定网页完整内容（如 GitHub 源码、文档页面）用 `wet-mcp` 的 `extract`
+- **入口 DPI 感知**：`main.py` 必须调用 `SetProcessDPIAware()`，否则高 DPI 下坐标偏移
+- **停止热键过滤**：录制端必须过滤停止热键，不写入脚本，否则回放自爆
+- **实现前对照设计文档**：类名、方法签名、参数类型、返回值必须与设计文档一致
 
 ## 工具
 
-- MCP类见 `../mcp_tools_summary.csv`
+- MCP 工具清单见 `../mcp_tools_summary.csv`
+- 可并行的指令用 `parallel=True`
+- 搜索通用知识/技术方案用 `WebSearch`；抓取特定网页完整内容用 `wet-mcp` 的 `extract`
+- `wet-mcp extract` 可下载文件/抓取页面媒体组件
+- `Read` 无法访问 `D:\Temp`，MCP 长输出需 `Copy-Item` 到项目根目录，正则替换 `\\n` 为 `\n`
+- `write` 不支持 `replace_all`，用正则替换
 
 ## 经验/坑点
 
-- **单例进程计数**：用 `os.path.abspath(__file__)` + `result.stdout.count(script)` 精确匹配，比 PID 文件更可靠，无残留。`Where-Object { ProcessId -ne }` 在 PowerShell 管道中可能失效，不如 Python 侧 `count()` 简单
+- **单例进程计数**：用 `os.path.abspath(__file__)` + `result.stdout.count(script)` 精确匹配，比 PID 文件更可靠，无残留
 - **`uv sync` 不装 dev 依赖**：`uv sync` 只装 `[project.dependencies]`，pytest 在 `[project.optional-dependencies] dev` 里，需 `uv sync --extra dev` 才能安装
 - **FFT NCC 积分图列偏移**：`integral[i+h, j+w]` 的列偏移是 `w`（模板宽度），不是 `1`。用 `1` 导致计算的是 h×1 区域而非 h×w 区域
-- **卡尔曼静态模型收敛**：静态目标模型 + 低过程噪声时，协方差快速收敛到接近零，Kalman Gain 极小，滤波器不再信任观测。测试需从真实值附近初始化，或增大过程噪声
 - **`time.time()` 单位是秒**：内部计算 `duration_ms = int((end - start) * 1000)`，测试 mock 时间值时注意单位
-- **实现前必须对照设计文档**：类名、方法签名、参数类型、返回值类型必须与设计文档一致，否则后续环节（如 player 依赖 kalman）会连锁报错
-- **`_pos_match` 多路径测试需 mock 多个内部方法**：`_pos_match` 有多个 fallback 路径（shot 文件不存在→原始坐标、匹配失败→卡尔曼预测值），测试匹配成功/失败路径时需同时 mock `_load_shot` 和 `_capture_screen`，否则静默走 fallback
 - **Pillow 私有 API 会随版本移除**：`ImageGrab._grayscale_from_argb` 在 Pillow 12.3.0 被移除，改用 `Image.convert("L")`。依赖私有 API 时必须在 CI 中锁定版本上限
-- **停止热键会自爆**：录制时 F9 停止热键的 keydown/keyup 被写入脚本，回放时模拟 F9 会触发 player 自身 hook 的 stop_flag，导致回放立即中止。录制端必须过滤停止热键，不要写入脚本
-- **Windows DPI 缩放导致坐标偏移**：高 DPI 下 `ImageGrab.grab()` 返回虚拟化尺寸，但 `SetCursorPos` 用物理像素，坐标换算错位。入口处调用 `SetProcessDPIAware()` 强制物理像素坐标系
-- **日志模块全局状态需可重置**：`setup_logging()` 的 `_setup_done` 标志在测试间会污染，需要提供 `_reset_setup()` 函数清空 handlers 和重置标志，并在 `setup_method`/`teardown_method` 中调用
-- **TimedRotatingFileHandler 在 Windows 上锁文件**：handler 持有日志文件句柄，`TemporaryDirectory` 清理时抛出 `PermissionError`。测试中必须在 `with` 块内先 `_reset_setup()` 关闭 handler，再退出 `with` 块让 tempdir 清理
-- **Kalman 滤波不适合追踪静止 UI 元素**：低过程噪声导致协方差收敛，Kalman Gain 趋近零，无法从匹配失败中恢复。键盘录制回放场景下，简单的 offset 追踪比 Kalman 更合适：窗口偏移是全局的、一致的，所有按钮共享同一个偏移量
+- **日志 handler 锁文件 + 全局状态污染**：`TimedRotatingFileHandler` 在 Windows 上持有日志文件句柄，`TemporaryDirectory` 清理时抛 `PermissionError`。`setup_logging()` 的 `_setup_done` 标志在测试间会污染。测试中需 `_reset_setup()` 关闭 handler 并重置标志，且在 `with` 块内调用
 - **三档递进搜索策略**：原始+offset → 原始坐标 → 全屏 → 兜底，逐级降级确保不因单点匹配失败而整体回放中断
-- **浮点时间比较需 `round()`**：`int((now - start) * 1000)` 在 `0.3 * 1000` 时产生 `299.999...` 而非 `300`，`int()` 截断导致 off-by-one。用 `int(round(...))` 修复。mock `time.time()` 测试时需用 `patch("engine.recorder.time.time", ...)` 而非 `patch("time.time", ...)`，否则 `side_effect` 值可能被非预期调用消耗
+- **浮点时间比较需 `round()`**：`int((now - start) * 1000)` 在 `0.3 * 1000` 时产生 `299.999...` 而非 `300`，`int()` 截断导致 off-by-one。用 `int(round(...))` 修复
 
 ## 工作流
 
