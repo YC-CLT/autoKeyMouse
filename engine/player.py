@@ -12,6 +12,7 @@ from PIL import Image, ImageGrab
 from config import (
     MATCH_CONFIDENCE,
     MATCH_SEARCH_RADIUS,
+    MOUSE_MOVE_INTERVAL_MS,
 )
 from engine.hooks import HookManager
 
@@ -128,6 +129,34 @@ class Player:
                    guess_x, guess_y)
         return (guess_x, guess_y)
 
+    def _pos_match_for_pos(self, pos: list[float], screen_w: int, screen_h: int) -> tuple[int, int]:
+        ox, oy = self._rel_to_abs(pos, screen_w, screen_h)
+        return (ox + self._offset[0], oy + self._offset[1])
+
+    def _execute_mouse_event_at(self, event: Event, x: int, y: int):
+        win32api.SetCursorPos((x, y))
+        action = event.action
+        if action == "move":
+            return
+        flags_map = {
+            "left_down": (win32con.MOUSEEVENTF_LEFTDOWN,),
+            "left_up": (win32con.MOUSEEVENTF_LEFTUP,),
+            "right_down": (win32con.MOUSEEVENTF_RIGHTDOWN,),
+            "right_up": (win32con.MOUSEEVENTF_RIGHTUP,),
+            "middle_down": (win32con.MOUSEEVENTF_MIDDLEDOWN,),
+            "middle_up": (win32con.MOUSEEVENTF_MIDDLEUP,),
+            "wheel_up": (win32con.MOUSEEVENTF_WHEEL, 120),
+            "wheel_down": (win32con.MOUSEEVENTF_WHEEL, -120),
+        }
+        if action in flags_map:
+            flags = flags_map[action]
+            if action in ("wheel_up", "wheel_down"):
+                flag, delta = flags
+                win32api.mouse_event(flag, 0, 0, delta, 0)
+            else:
+                flag = flags[0]
+                win32api.mouse_event(flag, 0, 0, 0, 0)
+
     def _execute_mouse_event(self, event: Event, x: int, y: int):
         win32api.SetCursorPos((x, y))
 
@@ -218,27 +247,42 @@ class Player:
                         result.stopped_early = True
                         break
 
-                    delay_ms = self._calc_delay(event.delay_ms)
-                    time.sleep(delay_ms / 1000.0)
+                    if event.positions is not None:
+                        delay_ms = self._calc_delay(event.delay_ms)
+                        time.sleep(delay_ms / 1000.0)
 
-                    _log.debug("Event: type=%s action=%s pos=%s delay=%dms",
-                               event.type, event.action, event.pos, event.delay_ms)
+                        for i, pos in enumerate(event.positions):
+                            x, y = self._pos_match_for_pos(pos, screen_w, screen_h)
+                            self._execute_mouse_event_at(event, x, y)
 
-                    try:
-                        if event.type == "mouse":
-                            x, y = self._pos_match(event, screen_w, screen_h)
-                            _log.info("Mouse event: action=%s pos=(%d,%d)", event.action, x, y)
-                            self._execute_mouse_event(event, x, y)
-                        elif event.type == "key":
-                            _log.info("Key event: key=%s action=%s", event.key, event.action)
-                            self._execute_key_event(event)
-                        elif event.type == "text":
-                            _log.info("Text event: len=%d", len(event.text or ""))
-                            self._execute_text_event(event)
-                    except Exception as e:
-                        _log.error("Event execution failed: type=%s action=%s error=%s",
-                                   event.type, event.action, e)
-                        raise
+                            if i < len(event.positions) - 1:
+                                if event.delays is not None:
+                                    step_delay = self._calc_delay(event.delays[i])
+                                else:
+                                    step_delay = self._calc_delay(MOUSE_MOVE_INTERVAL_MS)
+                                time.sleep(step_delay / 1000.0)
+                    else:
+                        delay_ms = self._calc_delay(event.delay_ms)
+                        time.sleep(delay_ms / 1000.0)
+
+                        _log.debug("Event: type=%s action=%s pos=%s delay=%dms",
+                                   event.type, event.action, event.pos, event.delay_ms)
+
+                        try:
+                            if event.type == "mouse":
+                                x, y = self._pos_match(event, screen_w, screen_h)
+                                _log.info("Mouse event: action=%s pos=(%d,%d)", event.action, x, y)
+                                self._execute_mouse_event(event, x, y)
+                            elif event.type == "key":
+                                _log.info("Key event: key=%s action=%s", event.key, event.action)
+                                self._execute_key_event(event)
+                            elif event.type == "text":
+                                _log.info("Text event: len=%d", len(event.text or ""))
+                                self._execute_text_event(event)
+                        except Exception as e:
+                            _log.error("Event execution failed: type=%s action=%s error=%s",
+                                       event.type, event.action, e)
+                            raise
 
                 if not result.stopped_early:
                     _log.info("Cycle %d/%d completed", cycle + 1, self._times)

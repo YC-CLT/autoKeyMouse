@@ -1,7 +1,7 @@
 import json
 import os
 import tempfile
-from unittest.mock import patch
+from unittest.mock import MagicMock, call, patch
 
 import numpy as np
 import pytest
@@ -449,3 +449,116 @@ class TestPosMatch:
                  patch.object(player, "_check_stop", side_effect=mock_check_stop):
                 result = player.play()
                 assert player._offset == (0, 0)
+
+
+class TestCompressedPlayback:
+    def _make_script_dir(self, tmpdir, events=None):
+        if events is None:
+            events = [
+                {
+                    "type": "mouse",
+                    "action": "move",
+                    "delay_ms": 500,
+                    "pos": [0.1, 0.1],
+                    "positions": [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+                },
+                {
+                    "type": "mouse",
+                    "action": "left_down",
+                    "delay_ms": 100,
+                    "pos": [0.3, 0.3],
+                },
+            ]
+        data = {
+            "version": 1,
+            "meta": {
+                "created": "2026-08-14T10:00:00",
+                "screen": [1920, 1080],
+                "duration_ms": 600,
+                "event_count": len(events),
+            },
+            "events": events,
+        }
+        script_path = os.path.join(tmpdir, "script.json")
+        with open(script_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        return tmpdir
+
+    @patch("engine.player.win32api.SetCursorPos")
+    @patch("engine.player.time.sleep")
+    @patch("engine.player.ImageGrab.grab")
+    def test_compressed_move_expands_to_multiple_mouse_events(self, mock_grab, mock_sleep, mock_setcursor):
+        from PIL import Image
+        mock_grab.return_value = Image.new("RGB", (1920, 1080))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, use_match=False)
+            player._start_stop_listener = MagicMock()
+            player._stop_listener = MagicMock()
+            player._check_stop = MagicMock(return_value=False)
+            player._stop_flag = False
+
+            player.play()
+
+            assert mock_setcursor.call_count >= 4
+            assert mock_setcursor.call_args_list[0] == call((192, 108),)
+            assert mock_setcursor.call_args_list[1] == call((384, 216),)
+            assert mock_setcursor.call_args_list[2] == call((576, 324),)
+
+    @patch("engine.player.win32api.SetCursorPos")
+    @patch("engine.player.time.sleep")
+    @patch("engine.player.ImageGrab.grab")
+    def test_compressed_drag_uses_delays(self, mock_grab, mock_sleep, mock_setcursor):
+        from PIL import Image
+        events = [
+            {
+                "type": "mouse",
+                "action": "move",
+                "delay_ms": 12,
+                "pos": [0.50, 0.50],
+                "positions": [[0.50, 0.50], [0.51, 0.51], [0.52, 0.52]],
+                "delays": [12, 15],
+            },
+        ]
+        mock_grab.return_value = Image.new("RGB", (1920, 1080))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir, events)
+            player = Player(tmpdir, use_match=False)
+            player._start_stop_listener = MagicMock()
+            player._stop_listener = MagicMock()
+            player._check_stop = MagicMock(return_value=False)
+            player._stop_flag = False
+
+            player.play()
+
+            assert mock_setcursor.call_count == 3
+            sleep_calls = [c[0][0] for c in mock_sleep.call_args_list]
+            assert 0.012 in sleep_calls
+            assert 0.015 in sleep_calls
+
+    @patch("engine.player.win32api.SetCursorPos")
+    @patch("engine.player.time.sleep")
+    @patch("engine.player.ImageGrab.grab")
+    def test_legacy_event_no_positions_still_works(self, mock_grab, mock_sleep, mock_setcursor):
+        from PIL import Image
+        events = [
+            {
+                "type": "mouse",
+                "action": "move",
+                "delay_ms": 500,
+                "pos": [0.5, 0.5],
+            },
+        ]
+        mock_grab.return_value = Image.new("RGB", (1920, 1080))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir, events)
+            player = Player(tmpdir, use_match=False)
+            player._start_stop_listener = MagicMock()
+            player._stop_listener = MagicMock()
+            player._check_stop = MagicMock(return_value=False)
+            player._stop_flag = False
+
+            player.play()
+
+            assert mock_setcursor.call_count == 1
+            assert mock_setcursor.call_args_list[0] == call((960, 540),)
