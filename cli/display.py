@@ -44,8 +44,8 @@ def print_recording_done(script: Script, output_dir: str) -> None:
           f"saved={output_dir}")
 
 
-def print_playback_start(script_name: str, times: int, speed: float = 1.0) -> None:
-    print(f"[PLAY] script={script_name} times={times} speed={speed}")
+def print_playback_start(script_name: str, times: int, speed: float = 1.0, backend: str = "foreground") -> None:
+    print(f"[PLAY] script={script_name} times={times} speed={speed} backend={backend}")
 
 
 def print_playback_done(result) -> None:

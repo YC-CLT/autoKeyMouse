@@ -111,6 +111,12 @@ class TestPrintPlayback:
         assert "[PLAY] script=2026-08-14_1655" in captured.out
         assert "times=1" in captured.out
         assert "speed=1.0" in captured.out
+        assert "backend=foreground" in captured.out
+
+    def test_playback_start_background(self, capsys):
+        print_playback_start("2026-08-14_1655", 1, 1.0, backend="background")
+        captured = capsys.readouterr()
+        assert "backend=background" in captured.out
 
     def test_playback_done(self, capsys):
         class FakeResult:

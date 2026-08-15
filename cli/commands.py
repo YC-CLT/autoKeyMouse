@@ -63,6 +63,14 @@ def register_commands(subparsers) -> None:
         "--match", action="store_true", default=False,
         help="[EXPERIMENTAL] Enable template matching (unreliable, for debugging only)",
     )
+    play_parser.add_argument(
+        "--backend", type=str, default="foreground", choices=["foreground", "background"],
+        help="Backend driver: foreground (win32api) or background (cua-driver) (default: foreground)",
+    )
+    play_parser.add_argument(
+        "--backend-fallback", action="store_true", default=False,
+        help="Fall back to foreground driver if background driver fails",
+    )
 
     list_parser = subparsers.add_parser("list", help="List recorded scripts")
     list_parser.add_argument(
@@ -118,8 +126,8 @@ def handle_record(args) -> int:
 
 def handle_play(args) -> int:
     script_dir = args.script
-    _log.info("Command: play script=%s times=%d speed=%.1f match=%s",
-              script_dir, args.times, args.speed, args.match)
+    _log.info("Command: play script=%s times=%d speed=%.1f match=%s backend=%s fallback=%s",
+              script_dir, args.times, args.speed, args.match, args.backend, args.backend_fallback)
 
     if args.match:
         from rich.console import Console
@@ -128,13 +136,15 @@ def handle_play(args) -> int:
             "Use at your own risk.",
         )
 
-    print_playback_start(script_dir, args.times, args.speed)
+    print_playback_start(script_dir, args.times, args.speed, args.backend)
 
     player = Player(
         script_dir=script_dir,
         times=args.times,
         speed=args.speed,
         use_match=args.match,
+        backend=args.backend,
+        backend_fallback=args.backend_fallback,
     )
 
     result = player.play()
