@@ -46,3 +46,12 @@ class TestConfigConstants:
 
     def test_mouse_move_interval_range(self):
         assert config.MOUSE_MOVE_INTERVAL_MS > 0
+
+    def test_pause_hotkey_exists(self):
+        assert hasattr(config, "PAUSE_HOTKEY")
+
+    def test_pause_hotkey_type(self):
+        assert isinstance(config.PAUSE_HOTKEY, str)
+
+    def test_pause_hotkey_value(self):
+        assert config.PAUSE_HOTKEY == "f8"

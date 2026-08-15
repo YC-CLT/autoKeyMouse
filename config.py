@@ -1,4 +1,5 @@
 STOP_HOTKEY = "f9" # 全局停止键
+PAUSE_HOTKEY = "f8" # 暂停/恢复键
 
 SHOT_RADIUS = 192 # 截图半径
 
