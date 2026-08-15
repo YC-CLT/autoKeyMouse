@@ -17,6 +17,9 @@
 | `engine/logger.py` | 项目级日志，按日轮转 |
 | `engine/recorder.py` | 录制调度器 |
 | `engine/player.py` | 回放调度器 |
+| `engine/backend/base.py` | DesktopDriver 抽象基类 |
+| `engine/backend/foreground.py` | 前台驱动（win32api） |
+| `engine/backend/background.py` | 后台驱动（cua-driver） |
 | `cli/commands.py` | 5 个子命令处理 (record/play/list/inspect/tui) |
 | `tui/app.py` | Rich Live 交互菜单 |
 
@@ -59,6 +62,9 @@
 
 ## 经验/坑点
 
+- **cua-driver `structured_json` 是 JSON 字符串**：`result.structured_json` 返回的是 JSON 字符串而非字典，需 `json.loads()` 解析后才能取字段
+- **cua-driver 方法都是 async**：`BackgroundDriver` 所有方法内部调用 `asyncio.run()` 包装异步调用，Player 端无需感知异步
+- **Driver 接口统一**：`mouse_event`/`key_event`/`text_event` 三个方法覆盖 Player 所有底层操作用例，`ForegroundDriver` 和 `BackgroundDriver` 实现各自的映射逻辑
 - **单例进程计数**：用 `os.path.abspath(__file__)` + `result.stdout.count(script)` 精确匹配，比 PID 文件更可靠，无残留
 - **`uv sync` 不装 dev 依赖**：`uv sync` 只装 `[project.dependencies]`，pytest 在 `[project.optional-dependencies] dev` 里，需 `uv sync --extra dev` 才能安装
 - **FFT NCC 积分图列偏移**：`integral[i+h, j+w]` 的列偏移是 `w`（模板宽度），不是 `1`。用 `1` 导致计算的是 h×1 区域而非 h×w 区域
