@@ -33,6 +33,7 @@
 | 常量 | 默认值 | 说明 |
 |------|--------|------|
 | `STOP_HOTKEY` | `"f9"` | 全局停止热键 |
+| `PAUSE_HOTKEY` | `"f8"` | 暂停/恢复热键 |
 | `SHOT_RADIUS` | `192` | 截图裁剪半径 (px) |
 | `MATCH_CONFIDENCE` | `0.85` | NCC 置信度阈值 |
 | `MATCH_SEARCH_RADIUS` | `100` | 搜索 ROI 半径 (px) |
@@ -69,6 +70,7 @@
 - **小模板全屏匹配假阳性**：100×100 模板在 1920×1200 屏幕上的 FFT NCC 全屏搜索容易找到高置信度但完全错误的匹配。模板匹配应默认关闭，仅作实验功能
 - **Rich 反斜杠导致标记泄漏**：f-string 中文件路径末尾 `\` 会被 Rich 解析为转义 `\[`，使闭合标签 `[/bold cyan]` 变成纯文本。用 `rich.markup.escape()` 包裹用户输入
 - **CLI/TUI default 值不要硬编码**：`argparse` 的 `default=` 和 TUI 的 `Prompt.ask(default=)` 必须从 `config.py` 导入常量，否则改 config 值后这些地方不同步
+- **`_hooks` 可能为 None**：Player 的 `_hooks` 在 `_start_stop_listener` 被 mock 或 hooks 初始化失败时为 None。调用 `_hooks.reset_pause()` / `_hooks.pause_flag` 前必须加 None 检查，否则 `AttributeError`
 
 ## 工作流
 
@@ -83,4 +85,4 @@
 5. 验证：调用 verification-before-completion → 跑验证命令确认完成
 6. 记录：调用 writing-agents → 写CHANGELOG.md + 经验教训到AGENTS.md
 7. 提交：调用 finishing-a-development-branch → 分组提交
-8. 
+8.

@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-08-15 — 暂停/恢复 + CLI 输出重构
+
+### 改动
+
+- **config.py**: 新增 `PAUSE_HOTKEY = "f8"` 暂停/恢复热键
+- **engine/hooks.py**: 新增 `_pause_flag` 状态、`pause_flag` property、`reset_pause()` 方法；F8 热键 toggle 暂停状态
+- **engine/player.py**: 新增 `_check_pause()` 暂停轮询、`_log_event_progress()` 事件进度日志；`play()` 每事件前检查暂停（while 循环等待恢复），每轮回放 `reset_pause()`
+- **cli/display.py**: 全部 Rich Panel/Table → 纯文本 `[TAG] key=value` 格式
+  - `[RECORD]` `[PLAY]` `[SCRIPT]` `[EVENT]` 四种 TAG
+  - 移除 Rich 依赖，输出更易 AI 解析
+- **cli/commands.py**: 
+  - `handle_record` 打印 `[RECORD] Next: autokeymouse play ...`
+  - `handle_inspect` 新增 `print_event_list` 输出事件列表
+  - `handle_list` 新增 `--json` 参数
+  - `handle_play` 传 `speed` 参数
+- **tui/app.py**: 适配 `print_recording_done(script, output_dir)` 新签名
+- **tests**: 新增 11 个测试（hooks 暂停 3 + player 暂停/进度 4 + display 纯文本 11）
+
+### 原因
+
+- 回放过程中需要暂停/恢复功能，F8 热键控制
+- Rich 格式化输出美观但 AI 解析困难，纯文本 `[TAG] key=value` 更利于自动化和日志分析
+- 事件进度日志让用户实时了解回放进度
+
+---
+
 ## 2026-08-14 — 移动事件压缩
 
 ### 改动
