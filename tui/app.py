@@ -100,7 +100,7 @@ def _tui_record() -> None:
 
     script = recorder.stop()
     save(script, output_dir)
-    print_recording_done(script)
+    print_recording_done(script, output_dir)
     input("\nPress Enter to return to menu...")
 
 
