@@ -134,13 +134,20 @@ def _tui_play() -> None:
 
     use_match = Prompt.ask("Use template matching? [EXPERIMENTAL]", choices=["y", "n"], default="n")
 
-    _log.info("TUI play: script=%s", script_dir)
-    print_playback_start(script_name, times)
+    backend = Prompt.ask("Backend driver", choices=["foreground", "background"], default="foreground")
+    backend_fallback = "n"
+    if backend == "background":
+        backend_fallback = Prompt.ask("Fall back to foreground if background fails?", choices=["y", "n"], default="n")
+
+    _log.info("TUI play: script=%s backend=%s", script_dir, backend)
+    print_playback_start(script_name, times, speed, backend)
     player = Player(
         script_dir=script_dir,
         times=times,
         speed=speed,
         use_match=use_match == "y",
+        backend=backend,
+        backend_fallback=backend_fallback == "y",
     )
 
     result = player.play()
