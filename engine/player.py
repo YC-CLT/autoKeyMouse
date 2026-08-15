@@ -214,6 +214,18 @@ class Player:
             return True
         return False
 
+    def _check_pause(self) -> bool:
+        if self._hooks is None:
+            return False
+        return self._hooks.pause_flag
+
+    def _log_event_progress(self, idx: int, total: int, event_type: str, action: str, *details: str):
+        parts = [f"[PLAY] Event {idx}/{total} {event_type} {action}"]
+        parts.extend(details)
+        line = " ".join(parts)
+        print(line)
+        _log.info(line)
+
     def _stop_listener(self):
         if self._hooks is not None:
             self._hooks.stop()
@@ -241,15 +253,27 @@ class Player:
                 _log.info("Cycle %d/%d starting", cycle + 1, self._times)
 
                 self._offset = (0, 0)
+                if self._hooks is not None:
+                    self._hooks.reset_pause()
 
-                for event in self._script.events:
+                total_events = len(self._script.events)
+
+                for event_idx, event in enumerate(self._script.events):
                     if self._stop_flag or self._check_stop():
                         result.stopped_early = True
                         break
 
+                    while self._check_pause():
+                        time.sleep(0.1)
+
                     if event.positions is not None:
                         delay_ms = self._calc_delay(event.delay_ms)
                         time.sleep(delay_ms / 1000.0)
+
+                        self._log_event_progress(
+                            event_idx, total_events, event.type, event.action,
+                            f"pos={event.positions[0]}", f"compressed={len(event.positions)}",
+                        )
 
                         for i, pos in enumerate(event.positions):
                             x, y = self._pos_match_for_pos(pos, screen_w, screen_h)
@@ -271,13 +295,18 @@ class Player:
                         try:
                             if event.type == "mouse":
                                 x, y = self._pos_match(event, screen_w, screen_h)
+                                details = [f"pos=[{event.pos[0]:.2f},{event.pos[1]:.2f}]"]
+                                if event.shot:
+                                    details.append(f"shot={event.shot}")
+                                self._log_event_progress(event_idx, total_events, event.type, event.action, *details)
                                 _log.info("Mouse event: action=%s pos=(%d,%d)", event.action, x, y)
                                 self._execute_mouse_event(event, x, y)
                             elif event.type == "key":
+                                self._log_event_progress(event_idx, total_events, event.type, event.action, f"keycode={event.keycode}")
                                 _log.info("Key event: key=%s action=%s", event.key, event.action)
                                 self._execute_key_event(event)
                             elif event.type == "text":
-                                _log.info("Text event: len=%d", len(event.text or ""))
+                                self._log_event_progress(event_idx, total_events, event.type, event.action, f"len={len(event.text or '')}")
                                 self._execute_text_event(event)
                         except Exception as e:
                             _log.error("Event execution failed: type=%s action=%s error=%s",

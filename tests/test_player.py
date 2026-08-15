@@ -562,3 +562,73 @@ class TestCompressedPlayback:
 
             assert mock_setcursor.call_count == 1
             assert mock_setcursor.call_args_list[0] == call((960, 540),)
+
+
+class TestPlayerPause:
+    def _make_script_dir(self, tmpdir):
+        data = {
+            "version": 1,
+            "meta": {
+                "created": "2026-08-14T10:00:00",
+                "screen": [1920, 1080],
+                "duration_ms": 100,
+                "event_count": 1,
+            },
+            "events": [
+                {
+                    "type": "mouse",
+                    "action": "move",
+                    "delay_ms": 100,
+                    "pos": [0.5, 0.5],
+                },
+            ],
+        }
+        script_path = os.path.join(tmpdir, "script.json")
+        with open(script_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        return tmpdir
+
+    def test_check_pause_false_when_hooks_none(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, use_match=False)
+            assert player._check_pause() is False
+
+    def test_check_pause_false_when_flag_false(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, use_match=False)
+            hooks = MagicMock()
+            hooks.pause_flag = False
+            player._hooks = hooks
+            assert player._check_pause() is False
+
+    def test_check_pause_true_when_flag_true(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, use_match=False)
+            hooks = MagicMock()
+            hooks.pause_flag = True
+            player._hooks = hooks
+            assert player._check_pause() is True
+
+    def test_log_event_progress_format(self, capsys):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, use_match=False)
+            player._log_event_progress(5, 230, "mouse", "left_down", "pos=[0.32,0.45]", "shot=shots/0001.png")
+            captured = capsys.readouterr()
+            assert "[PLAY]" in captured.out
+            assert "Event 5/230" in captured.out
+            assert "mouse" in captured.out
+            assert "left_down" in captured.out
+            assert "pos=[0.32,0.45]" in captured.out
+            assert "shot=shots/0001.png" in captured.out
+
+    def test_log_event_progress_no_details(self, capsys):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, use_match=False)
+            player._log_event_progress(0, 10, "key", "a down", "keycode=65")
+            captured = capsys.readouterr()
+            assert "[PLAY] Event 0/10 key a down keycode=65" in captured.out
