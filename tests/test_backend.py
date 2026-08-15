@@ -46,3 +46,19 @@ class TestConcreteDriver:
     def test_instantiate(self):
         d = ConcreteDriver()
         assert d.get_screen_size() == (1920, 1080)
+
+
+class TestForegroundDriver:
+    def test_instantiate(self):
+        from engine.backend import ForegroundDriver
+        d = ForegroundDriver()
+        assert d is not None
+
+    def test_get_screen_size(self):
+        from engine.backend import ForegroundDriver
+        d = ForegroundDriver()
+        w, h = d.get_screen_size()
+        assert w > 0
+        assert h > 0
+        assert isinstance(w, int)
+        assert isinstance(h, int)
