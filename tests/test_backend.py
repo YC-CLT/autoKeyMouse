@@ -62,3 +62,19 @@ class TestForegroundDriver:
         assert h > 0
         assert isinstance(w, int)
         assert isinstance(h, int)
+
+
+class TestBackgroundDriver:
+    def test_instantiate(self):
+        from engine.backend import BackgroundDriver
+        d = BackgroundDriver()
+        assert d is not None
+
+    def test_get_screen_size(self):
+        from engine.backend import BackgroundDriver
+        d = BackgroundDriver()
+        w, h = d.get_screen_size()
+        assert w > 0
+        assert h > 0
+        assert isinstance(w, int)
+        assert isinstance(h, int)
