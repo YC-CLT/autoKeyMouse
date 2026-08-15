@@ -1,126 +1,62 @@
-from rich.console import Console
-from rich.markup import escape
-from rich.panel import Panel
-from rich.progress import Progress
-from rich.table import Table
-
 from engine.script import Event, Script
-
-console = Console()
 
 
 def print_summary(script: Script) -> None:
-    table = Table(title="Script Summary")
-    table.add_column("Field", style="cyan")
-    table.add_column("Value", style="green")
-
-    table.add_row("Created", script.meta.created)
-    table.add_row("Screen", f"{script.meta.screen[0]}x{script.meta.screen[1]}")
-    table.add_row("Duration", f"{script.meta.duration_ms}ms")
-    table.add_row("Events", str(script.meta.event_count))
-
-    console.print(table)
+    print(f"[SCRIPT] created={script.meta.created} "
+          f"screen={script.meta.screen[0]}x{script.meta.screen[1]} "
+          f"duration={script.meta.duration_ms}ms "
+          f"events={script.meta.event_count}")
 
 
 def print_event_list(events: list[Event]) -> None:
-    table = Table(title="Event List")
-    table.add_column("#", style="dim")
-    table.add_column("Type", style="cyan")
-    table.add_column("Action", style="green")
-    table.add_column("Delay (ms)", style="yellow")
-    table.add_column("Details", style="white")
-
-    i = 0
-    while i < len(events):
-        event = events[i]
-
-        if event.type == "mouse" and event.action == "move":
-            start = i
-            start_event = event
-            total_delay = event.delay_ms
-            i += 1
-            while i < len(events) and events[i].type == "mouse" and events[i].action == "move":
-                total_delay += events[i].delay_ms
-                i += 1
-            end = i - 1
-            end_event = events[end]
-
-            if start == end:
-                label = str(start)
-                details = f"pos={start_event.pos}"
-            else:
-                label = f"{start}-{end}"
-                details = f"x{end - start + 1}  {start_event.pos} → {end_event.pos}"
-
-            table.add_row(label, "mouse", "move", str(total_delay), details)
-        else:
-            details = ""
-            if event.type == "key":
-                details = f"key={event.key} keycode={event.keycode}"
-            elif event.type == "mouse":
-                details = f"pos={event.pos}"
-                if event.shot:
-                    details += f" shot={event.shot}"
-            elif event.type == "text":
-                details = f"text={event.text}"
-
-            table.add_row(str(i), event.type, event.action, str(event.delay_ms), details)
-            i += 1
-
-    console.print(table)
+    for i, event in enumerate(events):
+        details = _event_details(event)
+        print(f"[EVENT] {i} {event.type} {event.action} "
+              f"delay={event.delay_ms}ms {details}")
 
 
-def print_progress(current: int, total: int, label: str = "") -> None:
-    with Progress() as progress:
-        task = progress.add_task(f"[cyan]{label}...", total=total)
-        progress.update(task, completed=current)
+def _event_details(event: Event) -> str:
+    if event.type == "key":
+        return f"key={event.key} keycode={event.keycode}"
+    elif event.type == "text":
+        return f"text={event.text}"
+    elif event.type == "mouse":
+        if event.action == "move":
+            if event.positions is not None:
+                n = len(event.positions)
+                drag = " drag=yes" if event.delays is not None else ""
+                return f"pos={event.positions[0]} compressed={n}{drag}"
+            return f"pos={event.pos}"
+        parts = [f"pos={event.pos}"]
+        if event.shot:
+            parts.append(f"shot={event.shot}")
+        return " ".join(parts)
+    return ""
 
 
 def print_recording_start() -> None:
-    console.print(Panel.fit(
-        "[bold yellow]Recording...[/bold yellow] Press [bold red]F9[/bold red] to stop.",
-        title="autokeymouse",
-    ))
+    print("[RECORD] Started (F9 to stop)")
 
 
-def print_recording_done(script: Script) -> None:
-    console.print(Panel.fit(
-        f"[bold green]Recording complete![/bold green]\n"
-        f"Events: {script.meta.event_count} | Duration: {script.meta.duration_ms}ms",
-        title="autokeymouse",
-    ))
+def print_recording_done(script: Script, output_dir: str) -> None:
+    print(f"[RECORD] Done events={script.meta.event_count} "
+          f"duration={script.meta.duration_ms}ms "
+          f"saved={output_dir}")
 
 
-def print_playback_start(script_name: str, times: int) -> None:
-    console.print(Panel.fit(
-        f"[bold cyan]Playing: {escape(script_name)}[/bold cyan] x{times}\n"
-        f"Press [bold red]F9[/bold red] to stop.",
-        title="autokeymouse",
-    ))
+def print_playback_start(script_name: str, times: int, speed: float = 1.0) -> None:
+    print(f"[PLAY] script={script_name} times={times} speed={speed}")
 
 
 def print_playback_done(result) -> None:
-    status = "[bold yellow]stopped early[/bold yellow]" if result.stopped_early else "[bold green]completed[/bold green]"
-    console.print(Panel.fit(
-        f"Playback {status}\n"
-        f"Cycles: {result.completed_cycles} | Time: {result.total_time_ms}ms",
-        title="autokeymouse",
-    ))
+    status = "stopped" if result.stopped_early else "completed"
+    print(f"[PLAY] Done cycles={result.completed_cycles} "
+          f"time={result.total_time_ms}ms status={status}")
 
 
 def print_script_list(scripts: list[dict]) -> None:
-    table = Table(title="Recorded Scripts")
-    table.add_column("Name", style="cyan")
-    table.add_column("Date", style="green")
-    table.add_column("Events", style="yellow")
-    table.add_column("Duration", style="white")
-
     for s in scripts:
-        table.add_row(
-            s.get("name", ""),
-            s.get("created", ""),
-            str(s.get("event_count", 0)),
-            f"{s.get('duration_ms', 0)}ms",
-        )
-
-    console.print(table)
+        print(f"[SCRIPT] name={s.get('name', '')} "
+              f"created={s.get('created', '')} "
+              f"events={s.get('event_count', 0)} "
+              f"duration={s.get('duration_ms', 0)}ms")
