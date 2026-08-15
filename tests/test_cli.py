@@ -121,6 +121,15 @@ class TestListDefaults:
 
         args = parser.parse_args(["list"])
         assert args.dir is None
+        assert args.json is False
+
+    def test_list_json_flag(self):
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        register_commands(subparsers)
+
+        args = parser.parse_args(["list", "--json"])
+        assert args.json is True
 
 
 class TestInspectDefaults:

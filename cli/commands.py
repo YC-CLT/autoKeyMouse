@@ -1,9 +1,11 @@
+import json
 import argparse
 import os
 import time
 from datetime import datetime
 
 from cli.display import (
+    print_event_list,
     print_playback_done,
     print_playback_start,
     print_recording_done,
@@ -67,6 +69,10 @@ def register_commands(subparsers) -> None:
         "dir", type=str, nargs="?", default=None,
         help="Directory to list scripts from (default: scripts/)",
     )
+    list_parser.add_argument(
+        "--json", action="store_true", default=False,
+        help="Output as JSON",
+    )
 
     inspect_parser = subparsers.add_parser("inspect", help="Inspect a script file")
     inspect_parser.add_argument("script", type=str, help="Script directory to inspect")
@@ -105,7 +111,8 @@ def handle_record(args) -> int:
 
     script = recorder.stop()
     save(script, output_dir)
-    print_recording_done(script)
+    print_recording_done(script, output_dir)
+    print(f"[RECORD] Next: autokeymouse play {output_dir}")
     return 0
 
 
@@ -121,7 +128,7 @@ def handle_play(args) -> int:
             "Use at your own risk.",
         )
 
-    print_playback_start(script_dir, args.times)
+    print_playback_start(script_dir, args.times, args.speed)
 
     player = Player(
         script_dir=script_dir,
@@ -137,7 +144,7 @@ def handle_play(args) -> int:
 
 def handle_list(args) -> int:
     base_dir = args.dir or "scripts"
-    _log.info("Command: list dir=%s", base_dir)
+    _log.info("Command: list dir=%s json=%s", base_dir, args.json)
     scripts = []
 
     if os.path.isdir(base_dir):
@@ -155,7 +162,10 @@ def handle_list(args) -> int:
                 except Exception:
                     pass
 
-    print_script_list(scripts)
+    if args.json:
+        print(json.dumps(scripts, indent=2, ensure_ascii=False))
+    else:
+        print_script_list(scripts)
     return 0
 
 
@@ -164,6 +174,7 @@ def handle_inspect(args) -> int:
     try:
         script = load(args.script)
         print_summary(script)
+        print_event_list(script.events)
         return 0
     except Exception as e:
         _log.error("Failed to load script: %s error=%s", args.script, e)
