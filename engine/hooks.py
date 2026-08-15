@@ -7,7 +7,7 @@ import pythoncom
 import win32api
 import win32con
 
-from config import STOP_HOTKEY
+from config import PAUSE_HOTKEY, STOP_HOTKEY
 from engine.logger import get_logger
 
 _log = get_logger("engine.hooks")
@@ -23,6 +23,7 @@ class HookManager:
         self._key_callback = key_callback
         self._mouse_callback = mouse_callback
         self._stop_flag = False
+        self._pause_flag = False
         self._running = False
         self._thread: Optional[threading.Thread] = None
 
@@ -32,6 +33,8 @@ class HookManager:
         _log.debug("Key event: key=%s action=%s keycode=%s", key_name, action, event.KeyID)
         if key_name.lower() == STOP_HOTKEY.lower():
             self._stop_flag = True
+        if key_name.lower() == PAUSE_HOTKEY.lower():
+            self._pause_flag = not self._pause_flag
         self._key_callback({
             "key": key_name,
             "keycode": event.KeyID,
@@ -100,3 +103,10 @@ class HookManager:
     @property
     def stop_flag(self) -> bool:
         return self._stop_flag
+
+    @property
+    def pause_flag(self) -> bool:
+        return self._pause_flag
+
+    def reset_pause(self):
+        self._pause_flag = False
