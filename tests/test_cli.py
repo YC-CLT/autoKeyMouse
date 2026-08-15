@@ -99,6 +99,8 @@ class TestPlayDefaults:
         assert args.times == 1
         assert args.speed == 1.0
         assert args.match is False
+        assert args.backend == "foreground"
+        assert args.backend_fallback is False
 
     def test_play_custom_options(self):
         parser = argparse.ArgumentParser()
@@ -111,6 +113,34 @@ class TestPlayDefaults:
         assert args.times == 5
         assert args.speed == 2.0
         assert args.match is True
+
+    def test_play_backend_background(self):
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        register_commands(subparsers)
+
+        args = parser.parse_args([
+            "play", "test_script", "--backend", "background",
+        ])
+        assert args.backend == "background"
+
+    def test_play_backend_fallback(self):
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        register_commands(subparsers)
+
+        args = parser.parse_args([
+            "play", "test_script", "--backend-fallback",
+        ])
+        assert args.backend_fallback is True
+
+    def test_play_invalid_backend_rejected(self):
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        register_commands(subparsers)
+
+        with pytest.raises(SystemExit):
+            parser.parse_args(["play", "test_script", "--backend", "invalid"])
 
 
 class TestListDefaults:

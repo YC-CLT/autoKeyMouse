@@ -11,6 +11,7 @@ name = "autokeymouse"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cua-driver" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple/" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple/" }, marker = "python_full_version >= '3.12'" },
     { name = "pillow" },
@@ -26,6 +27,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cua-driver", specifier = ">=0.12" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
@@ -42,6 +44,18 @@ source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple/" }
 sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
 wheels = [
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
+]
+
+[[package]]
+name = "cua-driver"
+version = "0.19.3"
+source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple/" }
+wheels = [
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/d6/ea/0d7e6be634a57ac9f7ddbae5520a40df5d7398d0eeb14e1cc0a60d77766b/cua_driver-0.19.3-py3-none-macosx_13_0_universal2.whl", hash = "sha256:e97bcf95d5f237384239e1ff1e098b16f39feaf77b11a90a492bfdd571146d6f", size = 37360213, upload-time = "2026-08-10T13:43:27.474Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/8f/ca/9b1b9e2fba756b5a6db710db4789d63682d6bdf8dc92280c10bdffeb9e77/cua_driver-0.19.3-py3-none-manylinux_2_31_aarch64.whl", hash = "sha256:99cdaaaaf78def68236558b645c799034ac0b6fe5bb37abdf5fc7abc3afeff67", size = 25890132, upload-time = "2026-08-10T13:43:30.319Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/88/26/1b372765b192a2f4f7ee7e1474d1e39be9ab3bd637765f632e30e7ee6e18/cua_driver-0.19.3-py3-none-manylinux_2_31_x86_64.whl", hash = "sha256:3f327a444f5b666037dee5e7c15c98990abbfb4fe83669ef708cb34c2cafef14", size = 25668088, upload-time = "2026-08-10T13:43:32.71Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/57/83/fae6fbe201b7c4758b0102a2470851eea6a2638e06435a9088faccc96eff/cua_driver-0.19.3-py3-none-win_amd64.whl", hash = "sha256:4c20a2c767f4cffb28498387f73f07a2f3e41a9e5b5cbe6317413bbc16da943e", size = 24407054, upload-time = "2026-08-10T13:43:35.298Z" },
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/07/29/381ac0e68abb9897d32c33b5c55c2e6836434ecf926bcdcdb5f9a7238cba/cua_driver-0.19.3-py3-none-win_arm64.whl", hash = "sha256:c2a45a7f11d0a6af333cdf4a5c64033d9c1ccee0559e843c008a669b5b2b4691", size = 22796844, upload-time = "2026-08-10T13:43:37.822Z" },
 ]
 
 [[package]]

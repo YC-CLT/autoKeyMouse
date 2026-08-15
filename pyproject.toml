@@ -23,6 +23,7 @@ dependencies = [
     "Pillow>=10.0.0",
     "numpy>=1.24.0",
     "rich>=13.0.0",
+    "cua-driver>=0.12",
 ]
 
 [project.scripts]

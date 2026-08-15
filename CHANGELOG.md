@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## 2026-08-15 — 后台桌面驱动
+
+### 改动
+
+- **engine/backend/**: 新增 `DesktopDriver` 抽象基类 + `ForegroundDriver`（win32api）+ `BackgroundDriver`（cua-driver）
+  - `DesktopDriver` ABC 定义统一接口：`click`、`move`、`drag`、`scroll`、`type_text`、`key_down`、`key_up`、`get_screen_size`、`mouse_event`、`key_event`、`text_event`
+  - `ForegroundDriver` 从 `player.py` 拆出 win32api 代码，保持前台自动化行为不变
+  - `BackgroundDriver` 通过 `cua-driver` 实现后台自动化，无需窗口焦点
+- **engine/player.py**: 重构为使用 `DesktopDriver` 接口
+  - `__init__` 新增 `backend`、`backend_fallback` 参数
+  - `_execute_mouse_event` → `self._driver.mouse_event(x, y, action)`
+  - `_execute_key_event` → `self._driver.key_event(keycode, action)`
+  - `_execute_text_event` → `self._driver.text_event(text)`
+  - `play()` 使用 `self._driver.get_screen_size()` 替代 `ImageGrab.grab().size`
+  - `_log_event_progress` 输出 `backend` 字段
+- **cli/commands.py**: `play` 子命令新增 `--backend`（foreground/background）、`--backend-fallback` 参数
+- **cli/display.py**: `print_playback_start` 新增 `backend` 参数
+- **tui/app.py**: play 界面新增 Backend 选择框和 Backend fallback 选项
+- **pyproject.toml**: 新增 `cua-driver>=0.12` 依赖
+- **tests**: 新增 14 个测试（backend ABC 2 + ForegroundDriver 2 + BackgroundDriver 2 + player backend 3 + CLI backend 4 + display backend 1）
+
+### 原因
+
+- 前台自动化需要窗口焦点，无法后台执行其他任务
+- `cua-driver` 通过桌面级驱动实现后台键鼠操作，不干扰前台工作
+- `DesktopDriver` 抽象层使 Player 与具体驱动解耦，易于扩展新驱动
+
+---
+
 ## 2026-08-15 — 暂停/恢复 + CLI 输出重构
 
 ### 改动
