@@ -33,3 +33,15 @@ class DesktopDriver(ABC):
     @abstractmethod
     def get_screen_size(self) -> tuple[int, int]:
         ...
+
+    @abstractmethod
+    def mouse_event(self, x: int, y: int, action: str) -> None:
+        ...
+
+    @abstractmethod
+    def key_event(self, keycode: int, action: str) -> None:
+        ...
+
+    @abstractmethod
+    def text_event(self, text: str) -> None:
+        ...

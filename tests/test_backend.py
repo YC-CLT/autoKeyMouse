@@ -41,6 +41,15 @@ class ConcreteDriver(DesktopDriver):
     def get_screen_size(self):
         return (1920, 1080)
 
+    def mouse_event(self, x, y, action):
+        pass
+
+    def key_event(self, keycode, action):
+        pass
+
+    def text_event(self, text):
+        pass
+
 
 class TestConcreteDriver:
     def test_instantiate(self):

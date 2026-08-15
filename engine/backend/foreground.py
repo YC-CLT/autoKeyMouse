@@ -54,3 +54,44 @@ class ForegroundDriver(DesktopDriver):
     def get_screen_size(self) -> tuple[int, int]:
         screen = ImageGrab.grab()
         return screen.size
+
+    def mouse_event(self, x: int, y: int, action: str) -> None:
+        win32api.SetCursorPos((x, y))
+        if action == "move":
+            return
+        flags_map = {
+            "left_down": (win32con.MOUSEEVENTF_LEFTDOWN,),
+            "left_up": (win32con.MOUSEEVENTF_LEFTUP,),
+            "right_down": (win32con.MOUSEEVENTF_RIGHTDOWN,),
+            "right_up": (win32con.MOUSEEVENTF_RIGHTUP,),
+            "middle_down": (win32con.MOUSEEVENTF_MIDDLEDOWN,),
+            "middle_up": (win32con.MOUSEEVENTF_MIDDLEUP,),
+            "wheel_up": (win32con.MOUSEEVENTF_WHEEL, 120),
+            "wheel_down": (win32con.MOUSEEVENTF_WHEEL, -120),
+        }
+        if action in flags_map:
+            flags = flags_map[action]
+            if action in ("wheel_up", "wheel_down"):
+                flag, delta = flags
+                win32api.mouse_event(flag, 0, 0, delta, 0)
+            else:
+                flag = flags[0]
+                win32api.mouse_event(flag, 0, 0, 0, 0)
+
+    def key_event(self, keycode: int, action: str) -> None:
+        if action == "down":
+            win32api.keybd_event(keycode, 0, 0, 0)
+        elif action == "up":
+            win32api.keybd_event(keycode, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    def text_event(self, text: str) -> None:
+        if not text:
+            return
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardText(text)
+        win32clipboard.CloseClipboard()
+        win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+        win32api.keybd_event(ord("V"), 0, 0, 0)
+        win32api.keybd_event(ord("V"), 0, win32con.KEYEVENTF_KEYUP, 0)
+        win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)

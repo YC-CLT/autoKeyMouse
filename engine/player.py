@@ -4,9 +4,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-import win32api
-import win32con
-import win32clipboard
 from PIL import Image, ImageGrab
 
 from config import (
@@ -14,6 +11,7 @@ from config import (
     MATCH_SEARCH_RADIUS,
     MOUSE_MOVE_INTERVAL_MS,
 )
+from engine.backend import ForegroundDriver, BackgroundDriver
 from engine.hooks import HookManager
 
 from engine.logger import get_logger
@@ -37,15 +35,24 @@ class Player:
         times: int = 1,
         speed: float = 1.0,
         use_match: bool = False,
+        backend: str = "foreground",
+        backend_fallback: bool = False,
     ):
         self._script = load(script_dir)
         self._script_dir = script_dir
         self._times = max(1, times)
         self._speed = max(0.01, speed)
         self._use_match = use_match
+        self._backend = backend
+        self._backend_fallback = backend_fallback
         self._stop_flag = False
         self._offset = (0, 0)
         self._hooks: Optional[HookManager] = None
+
+        if backend == "background":
+            self._driver = BackgroundDriver()
+        else:
+            self._driver = ForegroundDriver()
 
     def _rel_to_abs(
         self, pos: list[float], screen_w: int, screen_h: int
@@ -134,73 +141,16 @@ class Player:
         return (ox + self._offset[0], oy + self._offset[1])
 
     def _execute_mouse_event_at(self, event: Event, x: int, y: int):
-        win32api.SetCursorPos((x, y))
-        action = event.action
-        if action == "move":
-            return
-        flags_map = {
-            "left_down": (win32con.MOUSEEVENTF_LEFTDOWN,),
-            "left_up": (win32con.MOUSEEVENTF_LEFTUP,),
-            "right_down": (win32con.MOUSEEVENTF_RIGHTDOWN,),
-            "right_up": (win32con.MOUSEEVENTF_RIGHTUP,),
-            "middle_down": (win32con.MOUSEEVENTF_MIDDLEDOWN,),
-            "middle_up": (win32con.MOUSEEVENTF_MIDDLEUP,),
-            "wheel_up": (win32con.MOUSEEVENTF_WHEEL, 120),
-            "wheel_down": (win32con.MOUSEEVENTF_WHEEL, -120),
-        }
-        if action in flags_map:
-            flags = flags_map[action]
-            if action in ("wheel_up", "wheel_down"):
-                flag, delta = flags
-                win32api.mouse_event(flag, 0, 0, delta, 0)
-            else:
-                flag = flags[0]
-                win32api.mouse_event(flag, 0, 0, 0, 0)
+        self._driver.mouse_event(x, y, event.action)
 
     def _execute_mouse_event(self, event: Event, x: int, y: int):
-        win32api.SetCursorPos((x, y))
-
-        action = event.action
-        if action == "move":
-            return
-
-        flags_map = {
-            "left_down": (win32con.MOUSEEVENTF_LEFTDOWN,),
-            "left_up": (win32con.MOUSEEVENTF_LEFTUP,),
-            "right_down": (win32con.MOUSEEVENTF_RIGHTDOWN,),
-            "right_up": (win32con.MOUSEEVENTF_RIGHTUP,),
-            "middle_down": (win32con.MOUSEEVENTF_MIDDLEDOWN,),
-            "middle_up": (win32con.MOUSEEVENTF_MIDDLEUP,),
-            "wheel_up": (win32con.MOUSEEVENTF_WHEEL, 120),
-            "wheel_down": (win32con.MOUSEEVENTF_WHEEL, -120),
-        }
-
-        if action in flags_map:
-            flags = flags_map[action]
-            if action in ("wheel_up", "wheel_down"):
-                flag, delta = flags
-                win32api.mouse_event(flag, 0, 0, delta, 0)
-            else:
-                flag = flags[0]
-                win32api.mouse_event(flag, 0, 0, 0, 0)
+        self._driver.mouse_event(x, y, event.action)
 
     def _execute_key_event(self, event: Event):
-        if event.action == "down":
-            win32api.keybd_event(event.keycode, 0, 0, 0)
-        elif event.action == "up":
-            win32api.keybd_event(event.keycode, 0, win32con.KEYEVENTF_KEYUP, 0)
+        self._driver.key_event(event.keycode, event.action)
 
     def _execute_text_event(self, event: Event):
-        if event.text:
-            win32clipboard.OpenClipboard()
-            win32clipboard.EmptyClipboard()
-            win32clipboard.SetClipboardText(event.text)
-            win32clipboard.CloseClipboard()
-
-            win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-            win32api.keybd_event(ord("V"), 0, 0, 0)
-            win32api.keybd_event(ord("V"), 0, win32con.KEYEVENTF_KEYUP, 0)
-            win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+        self._driver.text_event(event.text or "")
 
     def _start_stop_listener(self):
         self._hooks = HookManager(key_callback=lambda d: None)
@@ -220,7 +170,7 @@ class Player:
         return self._hooks.pause_flag
 
     def _log_event_progress(self, idx: int, total: int, event_type: str, action: str, *details: str):
-        parts = [f"[PLAY] Event {idx}/{total} {event_type} {action}"]
+        parts = [f"[PLAY] Event {idx}/{total} {event_type} {action} backend={self._backend}"]
         parts.extend(details)
         line = " ".join(parts)
         print(line)
@@ -232,10 +182,9 @@ class Player:
             self._hooks = None
 
     def play(self) -> PlayerResult:
-        screen = ImageGrab.grab()
-        screen_w, screen_h = screen.size
-        _log.info("Playback started: script=%s times=%d speed=%.1f screen=%dx%d match=%s",
-                  self._script_dir, self._times, self._speed, screen_w, screen_h, self._use_match)
+        screen_w, screen_h = self._driver.get_screen_size()
+        _log.info("Playback started: script=%s times=%d speed=%.1f screen=%dx%d match=%s backend=%s",
+                  self._script_dir, self._times, self._speed, screen_w, screen_h, self._use_match, self._backend)
 
         self._stop_flag = False
         self._start_stop_listener()

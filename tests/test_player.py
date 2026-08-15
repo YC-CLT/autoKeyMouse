@@ -97,6 +97,24 @@ class TestPlayerInit:
             player = Player(tmpdir, speed=-1.0)
             assert player._speed == 0.01
 
+    def test_player_init_default_backend(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir)
+            assert player._backend == "foreground"
+
+    def test_player_init_background_backend(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, backend="background")
+            assert player._backend == "background"
+
+    def test_player_init_backend_fallback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._make_script_dir(tmpdir)
+            player = Player(tmpdir, backend_fallback=True)
+            assert player._backend_fallback is True
+
 
 class TestCoordinateConversion:
     def _make_script_dir(self, tmpdir):
@@ -484,15 +502,14 @@ class TestCompressedPlayback:
             json.dump(data, f)
         return tmpdir
 
-    @patch("engine.player.win32api.SetCursorPos")
     @patch("engine.player.time.sleep")
-    @patch("engine.player.ImageGrab.grab")
-    def test_compressed_move_expands_to_multiple_mouse_events(self, mock_grab, mock_sleep, mock_setcursor):
-        from PIL import Image
-        mock_grab.return_value = Image.new("RGB", (1920, 1080))
+    @patch("engine.player.ForegroundDriver.get_screen_size")
+    def test_compressed_move_expands_to_multiple_mouse_events(self, mock_screen, mock_sleep):
+        mock_screen.return_value = (1920, 1080)
         with tempfile.TemporaryDirectory() as tmpdir:
             self._make_script_dir(tmpdir)
             player = Player(tmpdir, use_match=False)
+            player._driver.mouse_event = MagicMock()
             player._start_stop_listener = MagicMock()
             player._stop_listener = MagicMock()
             player._check_stop = MagicMock(return_value=False)
@@ -500,16 +517,14 @@ class TestCompressedPlayback:
 
             player.play()
 
-            assert mock_setcursor.call_count >= 4
-            assert mock_setcursor.call_args_list[0] == call((192, 108),)
-            assert mock_setcursor.call_args_list[1] == call((384, 216),)
-            assert mock_setcursor.call_args_list[2] == call((576, 324),)
+            assert player._driver.mouse_event.call_count >= 4
+            assert player._driver.mouse_event.call_args_list[0] == call(192, 108, "move")
+            assert player._driver.mouse_event.call_args_list[1] == call(384, 216, "move")
+            assert player._driver.mouse_event.call_args_list[2] == call(576, 324, "move")
 
-    @patch("engine.player.win32api.SetCursorPos")
     @patch("engine.player.time.sleep")
-    @patch("engine.player.ImageGrab.grab")
-    def test_compressed_drag_uses_delays(self, mock_grab, mock_sleep, mock_setcursor):
-        from PIL import Image
+    @patch("engine.player.ForegroundDriver.get_screen_size")
+    def test_compressed_drag_uses_delays(self, mock_screen, mock_sleep):
         events = [
             {
                 "type": "mouse",
@@ -520,10 +535,11 @@ class TestCompressedPlayback:
                 "delays": [12, 15],
             },
         ]
-        mock_grab.return_value = Image.new("RGB", (1920, 1080))
+        mock_screen.return_value = (1920, 1080)
         with tempfile.TemporaryDirectory() as tmpdir:
             self._make_script_dir(tmpdir, events)
             player = Player(tmpdir, use_match=False)
+            player._driver.mouse_event = MagicMock()
             player._start_stop_listener = MagicMock()
             player._stop_listener = MagicMock()
             player._check_stop = MagicMock(return_value=False)
@@ -531,16 +547,14 @@ class TestCompressedPlayback:
 
             player.play()
 
-            assert mock_setcursor.call_count == 3
+            assert player._driver.mouse_event.call_count == 3
             sleep_calls = [c[0][0] for c in mock_sleep.call_args_list]
             assert 0.012 in sleep_calls
             assert 0.015 in sleep_calls
 
-    @patch("engine.player.win32api.SetCursorPos")
     @patch("engine.player.time.sleep")
-    @patch("engine.player.ImageGrab.grab")
-    def test_legacy_event_no_positions_still_works(self, mock_grab, mock_sleep, mock_setcursor):
-        from PIL import Image
+    @patch("engine.player.ForegroundDriver.get_screen_size")
+    def test_legacy_event_no_positions_still_works(self, mock_screen, mock_sleep):
         events = [
             {
                 "type": "mouse",
@@ -549,10 +563,11 @@ class TestCompressedPlayback:
                 "pos": [0.5, 0.5],
             },
         ]
-        mock_grab.return_value = Image.new("RGB", (1920, 1080))
+        mock_screen.return_value = (1920, 1080)
         with tempfile.TemporaryDirectory() as tmpdir:
             self._make_script_dir(tmpdir, events)
             player = Player(tmpdir, use_match=False)
+            player._driver.mouse_event = MagicMock()
             player._start_stop_listener = MagicMock()
             player._stop_listener = MagicMock()
             player._check_stop = MagicMock(return_value=False)
@@ -560,8 +575,8 @@ class TestCompressedPlayback:
 
             player.play()
 
-            assert mock_setcursor.call_count == 1
-            assert mock_setcursor.call_args_list[0] == call((960, 540),)
+            assert player._driver.mouse_event.call_count == 1
+            assert player._driver.mouse_event.call_args_list[0] == call(960, 540, "move")
 
 
 class TestPlayerPause:
@@ -622,6 +637,7 @@ class TestPlayerPause:
             assert "Event 5/230" in captured.out
             assert "mouse" in captured.out
             assert "left_down" in captured.out
+            assert "backend=foreground" in captured.out
             assert "pos=[0.32,0.45]" in captured.out
             assert "shot=shots/0001.png" in captured.out
 
@@ -631,4 +647,4 @@ class TestPlayerPause:
             player = Player(tmpdir, use_match=False)
             player._log_event_progress(0, 10, "key", "a down", "keycode=65")
             captured = capsys.readouterr()
-            assert "[PLAY] Event 0/10 key a down keycode=65" in captured.out
+            assert "[PLAY] Event 0/10 key a down backend=foreground keycode=65" in captured.out

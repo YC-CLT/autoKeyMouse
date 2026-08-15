@@ -87,3 +87,24 @@ class BackgroundDriver(DesktopDriver):
         ))
         data = json.loads(result.structured_json)
         return (data["width"], data["height"])
+
+    def mouse_event(self, x: int, y: int, action: str) -> None:
+        if action == "move":
+            self.move(x, y)
+        elif action == "wheel_up":
+            self.scroll(x, y, "up", 1)
+        elif action == "wheel_down":
+            self.scroll(x, y, "down", 1)
+        elif action in ("left_down", "left_up"):
+            self.click(x, y, "left")
+        elif action in ("right_down", "right_up"):
+            self.click(x, y, "right")
+        elif action in ("middle_down", "middle_up"):
+            self.click(x, y, "middle")
+
+    def key_event(self, keycode: int, action: str) -> None:
+        if action == "down":
+            self.key_down(keycode)
+
+    def text_event(self, text: str) -> None:
+        self.type_text(text)
