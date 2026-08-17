@@ -3,6 +3,7 @@
 ## 环境
 
 - Python 3.11 + uv
+- **命令执行**：统一走 `cmd-exec-mcp`，读同名skill
 
 ## 关键文件
 
@@ -45,7 +46,6 @@
 
 ## 规则
 
-- **命令执行**：统一走 `cmd-exec-mcp`，必须先读 `./mcp_tools_summary.csv`
 - **config 重命名全量 grep**：常量改名/移除后，搜索所有引用点确保同步更新
 - **入口 DPI 感知**：`main.py` 必须调用 `SetProcessDPIAware()`，否则高 DPI 下坐标偏移
 - **停止热键过滤**：录制端必须过滤停止热键，不写入脚本，否则回放自爆
@@ -54,7 +54,7 @@
 ## 工具
 
 - MCP 工具清单见 `../mcp_tools_summary.csv`
-- 可并行的指令用 `parallel=True`
+- 部分工具有相应的skill
 - 搜索通用知识/技术方案用 `WebSearch`；抓取特定网页完整内容用 `wet-mcp` 的 `extract`
 - `wet-mcp extract` 可下载文件/抓取页面媒体组件
 - `Read` 无法访问 `D:\Temp`，MCP 长输出需 `Copy-Item` 到项目根目录，正则替换 `\\n` 为 `\n`
@@ -91,4 +91,3 @@
 5. 验证：调用 verification-before-completion → 跑验证命令确认完成
 6. 记录：调用 writing-agents → 写CHANGELOG.md + 经验教训到AGENTS.md
 7. 提交：调用 finishing-a-development-branch → 分组提交
-8.

@@ -11,7 +11,8 @@ Keyboard/mouse recording and playback tool for Windows — with optional screens
 ## Features
 
 - **Record** keyboard, mouse clicks, wheel events, and drag (mouse movement by default)
-- **Playback** with speed control, loop count, and F9 emergency stop
+- **Playback** with speed control, loop count, F9 emergency stop, and F8 pause/resume
+- **Background execution** — replay scripts without stealing window focus via cua-driver
 - **Drag support** — click-and-drag is recorded and replayed as a continuous sequence
 - **Offset tracking** — window-moved detection via visual offset correction
 - **Template matching** — (EXPERIMENTAL) FFT-based NCC screenshot-anchored positioning
@@ -56,6 +57,12 @@ uv run autokeymouse play scripts/2026-08-14_1624 -n 5 -s 2.0
 # Play back with experimental template matching
 uv run autokeymouse play scripts/2026-08-14_1624 --match
 
+# Play back in background (no window focus needed)
+uv run autokeymouse play scripts/2026-08-14_1624 --backend background
+
+# Play back in background with foreground fallback
+uv run autokeymouse play scripts/2026-08-14_1624 --backend background --backend-fallback
+
 # List recorded scripts
 uv run autokeymouse list
 
@@ -82,8 +89,9 @@ uv run autokeymouse tui
 
 1. Script is loaded from `script.json`
 2. All events replay at original recorded coordinates (resolution-independent)
-3. If `--match` is enabled, template matching attempts to locate the target on screen and corrects the position via a global offset
-4. `F9` stops playback at any time
+3. `--backend background` runs via cua-driver (no window focus needed); `--backend-fallback` auto-switches to foreground on failure
+4. If `--match` is enabled, template matching attempts to locate the target on screen and corrects the position via a global offset
+5. `F8` pauses/resumes playback, `F9` stops playback at any time
 
 ### Template Matching (EXPERIMENTAL)
 
@@ -96,6 +104,7 @@ All constants in [config.py](config.py):
 | Constant | Default | Description |
 |----------|---------|-------------|
 | `STOP_HOTKEY` | `"f9"` | Global stop hotkey |
+| `PAUSE_HOTKEY` | `"f8"` | Pause/resume hotkey |
 | `SHOT_RADIUS` | `192` | Screenshot crop radius (px) |
 | `MATCH_CONFIDENCE` | `0.85` | NCC confidence threshold |
 | `MATCH_SEARCH_RADIUS` | `100` | Search ROI radius (px) |
@@ -109,6 +118,10 @@ autokeymouse/
 ├── main.py              # CLI entry point
 ├── config.py            # All configuration constants
 ├── engine/              # Pure logic, no UI
+│   ├── backend/         # Desktop driver abstraction
+│   │   ├── base.py      # DesktopDriver ABC
+│   │   ├── foreground.py # Foreground driver (win32api)
+│   │   └── background.py # Background driver (cua-driver)
 │   ├── script.py        # Event/Script model + save/load/validate
 │   ├── capture.py       # Screenshot capture
 │   ├── matcher.py       # FFT NCC template matching
@@ -118,10 +131,10 @@ autokeymouse/
 │   └── player.py        # Playback orchestrator
 ├── cli/                 # CLI layer
 │   ├── commands.py      # Subcommand handlers
-│   └── display.py       # Rich output formatting
+│   └── display.py       # Plain text output formatting
 ├── tui/                 # TUI layer
 │   └── app.py           # Rich Live interactive menu
-└── tests/               # pytest test suite (111 tests)
+└── tests/               # pytest test suite (156 tests)
 ```
 
 ## License
@@ -139,7 +152,8 @@ Windows 键盘鼠标录制回放工具 — 支持可选截图锚定定位。
 ## 功能特性
 
 - **录制** 键盘、鼠标点击、滚轮和拖拽事件（默认录制鼠标移动）
-- **回放** 支持速度控制、循环次数、F9 紧急停止
+- **回放** 支持速度控制、循环次数、F9 紧急停止、F8 暂停/恢复
+- **后台执行** — 通过 cua-driver 后台回放，无需窗口焦点
 - **拖拽支持** — 点击拖拽操作录制为连续序列并完整回放
 - **偏移追踪** — 窗口移动检测，通过视觉偏移修正定位
 - **模板匹配** — （实验功能）基于 FFT 的 NCC 截图锚定定位
@@ -184,6 +198,12 @@ uv run autokeymouse play scripts/2026-08-14_1624 -n 5 -s 2.0
 # 开启实验性模板匹配
 uv run autokeymouse play scripts/2026-08-14_1624 --match
 
+# 后台回放（无需窗口焦点）
+uv run autokeymouse play scripts/2026-08-14_1624 --backend background
+
+# 后台回放，失败时自动切回前台
+uv run autokeymouse play scripts/2026-08-14_1624 --backend background --backend-fallback
+
 # 列出已录制脚本
 uv run autokeymouse list
 
@@ -210,8 +230,9 @@ uv run autokeymouse tui
 
 1. 从 `script.json` 加载脚本
 2. 所有事件按原始录制坐标回放（分辨率无关）
-3. 若开启 `--match`，模板匹配尝试在屏幕上定位目标，通过全局偏移量修正位置
-4. `F9` 随时停止回放
+3. `--backend background` 通过 cua-driver 后台运行（无需窗口焦点）；`--backend-fallback` 失败时自动切回前台
+4. 若开启 `--match`，模板匹配尝试在屏幕上定位目标，通过全局偏移量修正位置
+5. `F8` 暂停/恢复回放，`F9` 随时停止回放
 
 ### 模板匹配（实验功能）
 
@@ -224,8 +245,8 @@ uv run autokeymouse tui
 | 常量 | 默认值 | 说明 |
 |------|--------|------|
 | `STOP_HOTKEY` | `"f9"` | 全局停止热键 |
+| `PAUSE_HOTKEY` | `"f8"` | 暂停/恢复热键 |
 | `SHOT_RADIUS` | `192` | 截图裁剪半径（像素） |
-| `SHOT_FORMAT` | `"PNG"` | 截图格式 |
 | `MATCH_CONFIDENCE` | `0.85` | NCC 匹配置信度阈值 |
 | `MATCH_SEARCH_RADIUS` | `100` | 搜索区域半径（像素） |
 | `MOUSE_MOVE_INTERVAL_MS` | `200` | 鼠标移动事件最小间隔（毫秒） |
@@ -238,6 +259,10 @@ autokeymouse/
 ├── main.py              # CLI 入口
 ├── config.py            # 所有配置常量
 ├── engine/              # 纯逻辑，无 UI
+│   ├── backend/         # 桌面驱动抽象层
+│   │   ├── base.py      # DesktopDriver 抽象基类
+│   │   ├── foreground.py # 前台驱动（win32api）
+│   │   └── background.py # 后台驱动（cua-driver）
 │   ├── script.py        # Event/Script 模型 + 保存/加载/校验
 │   ├── capture.py       # 截图捕获
 │   ├── matcher.py       # FFT NCC 模板匹配
@@ -247,10 +272,10 @@ autokeymouse/
 │   └── player.py        # 回放调度器
 ├── cli/                 # CLI 层
 │   ├── commands.py      # 子命令处理
-│   └── display.py       # Rich 输出格式化
+│   └── display.py       # 纯文本输出格式化
 ├── tui/                 # TUI 层
 │   └── app.py           # Rich Live 交互菜单
-└── tests/               # pytest 测试套件（111 个测试）
+└── tests/               # pytest 测试套件（156 个测试）
 ```
 
 ## 许可证
